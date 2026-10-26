@@ -1,5 +1,6 @@
 import { DEFAULTS, loadState, saveState, loadPhoto, savePhoto, validateBackup } from './storage.js';
 import { RoomAudio } from './audio.js';
+import { initRoomSwitcher } from './room-switcher.js';
 
 const $ = id => document.getElementById(id);
 const state = loadState();
@@ -36,7 +37,7 @@ function persist() {
 function applyState() {
   document.body.dataset.mood = state.mood;
   $('roomTitle').textContent = state.roomName;
-  document.title = `${state.roomName} · 栖间 miniroom`;
+  document.title = `${document.body.dataset.room === 'gallery' ? '照片小屋' : state.roomName} · 栖间 miniroom`;
   const [symbol, text] = moodNames[state.mood];
   icon($('moodBadge'), symbol);
   $('moodBadge').querySelector('span').textContent = text;
@@ -447,6 +448,14 @@ $('backupInput').addEventListener('change', async event => {
 applyState();
 renderTimer();
 if (timer.deadline && remainingSeconds() === 0) completeTimer();
+const roomSwitcher = initRoomSwitcher({
+  getStudyName: () => state.roomName,
+  notify: toast,
+  onChange(current) {
+    room?.setPaused(current === 'gallery');
+    audio.setSuspended(current === 'gallery');
+  },
+});
 
 async function initializeRoom() {
   setPhotoBusy(true);
@@ -485,6 +494,7 @@ async function initializeRoom() {
       console.info('Miniroom: WebGL unavailable; using the Canvas lightweight renderer.');
     }
     applyState();
+    room.setPaused(roomSwitcher.current === 'gallery');
   } catch (error) {
     $('loadingIndicator').hidden = true;
     $('sceneError').hidden = false;
@@ -509,5 +519,5 @@ initializeRoom();
 window.addEventListener('pagehide', event => {
   if ($('booksDialog').open) storeNotes(false);
   persistTimer();
-  if (!event.persisted) { clearInterval(timerInterval); audio.dispose(); room?.dispose(); }
+  if (!event.persisted) { clearInterval(timerInterval); roomSwitcher.dispose(); audio.dispose(); room?.dispose(); }
 });

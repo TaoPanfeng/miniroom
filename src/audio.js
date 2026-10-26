@@ -9,6 +9,7 @@ export class RoomAudio {
   #volume = 35;
   #version = 0;
   #disposed = false;
+  #suspended = false;
   #suspendTimer = null;
 
   get enabled() { return this.#enabled; }
@@ -52,7 +53,7 @@ export class RoomAudio {
   #update() {
     if (!this.#context || this.#context.state === 'closed') return;
     const time = this.#context.currentTime;
-    this.#master.gain.setTargetAtTime(this.#enabled ? this.#volume / 100 : 0, time, 0.12);
+    this.#master.gain.setTargetAtTime(this.#enabled && !this.#suspended ? this.#volume / 100 : 0, time, 0.12);
     this.#rainGain.gain.setTargetAtTime(this.#rain ? 0.65 : 0, time, 0.2);
   }
 
@@ -85,6 +86,8 @@ export class RoomAudio {
   }
 
   setRain(value) { this.#rain = Boolean(value); this.#update(); }
+
+  setSuspended(value) { this.#suspended = Boolean(value); this.#update(); }
 
   setVolume(value) {
     if (!Number.isFinite(value)) return;

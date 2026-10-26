@@ -7,7 +7,7 @@ export function createRoomLite({ canvas, onSelect = () => {}, onHover = () => {}
   let width = 1, height = 1, ratio = 1, scale = 1, originX = 0, originY = 0;
   let cos = Math.cos(state.yaw), sin = Math.sin(state.yaw);
   let regions = [], frame = 0, rainTimer = 0, disposed = false, ready = false, hovered = null;
-  let photo = null, photoVersion = 0, gestureMoved = false, startPoint = null, pinchDistance = 0;
+  let photo = null, photoVersion = 0, gestureMoved = false, startPoint = null, pinchDistance = 0, paused = false;
   let focusTimer = 0;
   const art = document.createElement('canvas'); art.width = 400; art.height = 500;
   const artCtx = art.getContext('2d');
@@ -296,7 +296,7 @@ export function createRoomLite({ canvas, onSelect = () => {}, onHover = () => {}
   }
   function draw(time) {
     frame=0;if(disposed)return;
-    if(document.hidden)return;
+    if(document.hidden||paused)return;
     ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,width,height);
     cos=Math.cos(state.yaw);sin=Math.sin(state.yaw);
     const raw=[];
@@ -318,7 +318,7 @@ export function createRoomLite({ canvas, onSelect = () => {}, onHover = () => {}
     if(!ready){ready=true;onReady();}
     if(state.rain&&!rainTimer)rainTimer=window.setTimeout(()=>{rainTimer=0;schedule();},75);
   }
-  function schedule() { if(!disposed&&!frame)frame=requestAnimationFrame(draw); }
+  function schedule() { if(!disposed&&!paused&&!frame)frame=requestAnimationFrame(draw); }
   function resize() {
     if(disposed)return;const rect=canvas.parentElement.getBoundingClientRect();if(!rect.width||!rect.height)return;
     width=rect.width;height=rect.height;ratio=Math.min(window.devicePixelRatio||1,1.5);canvas.width=Math.round(width*ratio);canvas.height=Math.round(height*ratio);schedule();
@@ -362,6 +362,7 @@ export function createRoomLite({ canvas, onSelect = () => {}, onHover = () => {}
   canvas.style.touchAction='none';canvas.style.cursor='grab';resize();
 
   return {
+    setPaused(value){paused=Boolean(value);if(paused){cancelAnimationFrame(frame);frame=0;clearTimeout(rainTimer);rainTimer=0;pointers.clear();}else resize();},
     setMode(value){state.mode=value==='night'?'night':'day';schedule();},
     setLamp(value){state.lamp=Boolean(value);schedule();},
     setRain(value){state.rain=Boolean(value);if(!state.rain){clearTimeout(rainTimer);rainTimer=0;}schedule();},

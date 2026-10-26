@@ -41,6 +41,7 @@ export function createRoom({ canvas, onSelect = () => {}, onHover = () => {}, on
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   let disposed = false;
+  let paused = false;
   let lampOn = true;
   let rainOn = false;
   let mode = 'day';
@@ -557,7 +558,7 @@ export function createRoom({ canvas, onSelect = () => {}, onHover = () => {}, on
   function animate(now) {
     if (disposed) return;
     frame = requestAnimationFrame(animate);
-    if (document.hidden) { previousTick = now; return; }
+    if (document.hidden || paused) { previousTick = now; return; }
     if (now - previousTick < (reducedMotion.matches ? 32 : 16)) return;
     const dt = Math.min((now - previousTick) / 1000, .05);
     previousTick = now;
@@ -595,6 +596,7 @@ export function createRoom({ canvas, onSelect = () => {}, onHover = () => {}, on
   }
 
   return {
+    setPaused(value) { paused = Boolean(value); controls.enabled = !paused; if (!paused) resize(); },
     setMode(value) { mode = value === 'night' ? 'night' : 'day'; applyLighting(); },
     setLamp(value) { lampOn = Boolean(value); applyLighting(); },
     setRain(value) { rainOn = Boolean(value); rain.visible = rainOn; },
