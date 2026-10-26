@@ -1,0 +1,14 @@
+{
+  "name": "qijian-miniroom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An original, offline-ready interactive miniature study.",
+  "scripts": {
+    "start": "node scripts/serve.mjs --open",
+    "dev": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "build": "node scripts/package-site.mjs"
+  },
+  "engines": { "node": ">=18" }
+}
