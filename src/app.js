@@ -1,6 +1,8 @@
-import { DEFAULTS, loadState, saveState, loadPhoto, savePhoto, validateBackup } from './storage.js';
+import { DEFAULTS, loadState, saveState, loadPhoto, savePhoto, validateBackup, getStudyRevision } from './storage.js';
 import { RoomAudio } from './audio.js';
 import { initRoomSwitcher } from './room-switcher.js';
+import { initStorageManager } from './storage-manager.js';
+import { getStorageOverview, clearRoomData, subscribeStorageCleanup } from './storage-maintenance.js';
 
 const $ = id => document.getElementById(id);
 const state = loadState();
@@ -15,6 +17,19 @@ let toastTimeout;
 let saveWarningShown = false;
 let noteTimeout;
 let activeConfirmation;
+let studyVersion = 0;
+let resettingStudy = false;
+let storageCleanupRunning = false;
+let storageManager;
+let cleanupRefresh = Promise.resolve();
+
+function assertStudyVersion(version) {
+  if (version === studyVersion) return;
+  const error = new Error('书房数据已清理，本次旧操作已取消。');
+  error.name = 'StaleWriteError';
+  throw error;
+}
+const isStaleStudy = (version, error) => version !== studyVersion || error?.name === 'StaleWriteError';
 
 function icon(button, name) { button.querySelector('use')?.setAttribute('href', `#${name}`); }
 function toast(message, timeout = 3600) {
@@ -25,6 +40,11 @@ function toast(message, timeout = 3600) {
 }
 
 function persist() {
+  if (resettingStudy) return false;
+  // 清理后保留默认内存状态即可；关闭空白笔记不必重新生成一份默认存档。
+  if (Object.keys(DEFAULTS).every(key => state[key] === DEFAULTS[key])) {
+    try { if (localStorage.getItem('miniroom-state-v1') === null) return true; } catch { /* 仍交给正常保存流程报告错误。 */ }
+  }
   const saved = saveState(state);
   $('saveStatus').lastChild.textContent = saved ? '小屋的记忆，留在本机' : '本次改变尚未保存，请导出存档';
   if (!saved && !saveWarningShown) {
@@ -188,6 +208,7 @@ $('resetLookBtn').addEventListener('click', async () => {
 
 function storeNotes(showFeedback) {
   clearTimeout(noteTimeout);
+  if (resettingStudy) return;
   state.bookTitle = $('bookTitleInput').value.slice(0, 160);
   state.notes = $('noteInput').value.slice(0, 8000);
   $('noteCount').value = `${state.notes.length} / 8000`;
@@ -231,15 +252,19 @@ $('petCatBtn').addEventListener('click', () => {
 
 // 用绝对结束时间计算倒计时，标签页在后台时也不会逐秒累积误差。
 const TIMER_KEY = 'miniroom-focus-v1';
-let timer = { total: state.focusMinutes * 60, remaining: state.focusMinutes * 60, deadline: null, finished: false };
-try {
-  const saved = JSON.parse(localStorage.getItem(TIMER_KEY) || 'null');
-  if (saved && [900, 1500, 2700].includes(saved.total) && Number.isFinite(saved.remaining) && saved.remaining >= 0 && saved.remaining <= saved.total && (saved.deadline === null || (Number.isFinite(saved.deadline) && saved.deadline <= Date.now() + saved.total * 1000))) {
-    timer = { total: saved.total, remaining: saved.remaining, deadline: saved.deadline, finished: Boolean(saved.finished) };
-    state.focusMinutes = saved.total / 60;
-  }
-} catch { /* 存储不可用不影响本次计时。 */ }
-function persistTimer() { try { localStorage.setItem(TIMER_KEY, JSON.stringify(timer)); } catch { /* 计时仍在当前页面工作。 */ } }
+function readTimer() {
+  let result = { total: state.focusMinutes * 60, remaining: state.focusMinutes * 60, deadline: null, finished: false };
+  try {
+    const saved = JSON.parse(localStorage.getItem(TIMER_KEY) || 'null');
+    if (saved && [900, 1500, 2700].includes(saved.total) && Number.isFinite(saved.remaining) && saved.remaining >= 0 && saved.remaining <= saved.total && (saved.deadline === null || (Number.isFinite(saved.deadline) && saved.deadline <= Date.now() + saved.total * 1000))) {
+      result = { total: saved.total, remaining: saved.remaining, deadline: saved.deadline, finished: Boolean(saved.finished) };
+      state.focusMinutes = saved.total / 60;
+    }
+  } catch { /* 存储不可用不影响本次计时。 */ }
+  return result;
+}
+let timer = readTimer();
+function persistTimer() { if (resettingStudy) return; try { localStorage.setItem(TIMER_KEY, JSON.stringify(timer)); } catch { /* 计时仍在当前页面工作。 */ } }
 function remainingSeconds() { return timer.deadline ? Math.max(0, Math.ceil((timer.deadline - Date.now()) / 1000)) : timer.remaining; }
 function renderTimer() {
   const remaining = remainingSeconds();
@@ -290,11 +315,11 @@ document.querySelectorAll('[data-minutes]').forEach(button => button.addEventLis
   persist(); resetTimer();
 }));
 const timerInterval = setInterval(() => {
-  if (!timer.deadline) return;
+  if (resettingStudy || !timer.deadline) return;
   if (remainingSeconds() === 0) completeTimer();
   else if (!document.hidden) renderTimer();
 }, 500);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (timer.deadline && remainingSeconds() === 0) completeTimer(); else renderTimer(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !resettingStudy) { if (timer.deadline && remainingSeconds() === 0) completeTimer(); else renderTimer(); } });
 
 function updatePhotoPreview() {
   $('photoPreview').hidden = !photoData;
@@ -339,34 +364,46 @@ $('photoInput').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
   if (photoBusy) { event.target.value = ''; return; }
+  const version = studyVersion;
   setPhotoBusy(true);
   try {
+    const expectedRevision = await getStudyRevision();
+    assertStudyVersion(version);
     const resized = await resizePhoto(file);
+    assertStudyVersion(version);
     // 先确认场景能显示，再提交到持久存储；保存失败时还原画面。
     await room?.setPhoto(resized);
-    try { await savePhoto(resized); }
-    catch (error) { await room?.setPhoto(photoData).catch(() => {}); throw error; }
+    assertStudyVersion(version);
+    try { await savePhoto(resized, { expectedRevision }); }
+    catch (error) { if (!isStaleStudy(version, error)) await room?.setPhoto(photoData).catch(() => {}); throw error; }
+    assertStudyVersion(version);
     photoData = resized;
     photoStorageAvailable = true;
     updatePhotoPreview();
     toast('喜欢的瞬间，已经放进相框，只保存在本机。');
-  } catch (error) { toast(error.message || '照片没有保存，请稍后再试。', 5000); }
-  finally { setPhotoBusy(false); event.target.value = ''; }
+  } catch (error) { if (!isStaleStudy(version, error)) toast(error.message || '照片没有保存，请稍后再试。', 5000); }
+  finally { if (version === studyVersion) setPhotoBusy(false); event.target.value = ''; }
 });
 $('removePhotoBtn').addEventListener('click', async () => {
   if (photoBusy || !photoData) return;
+  const version = studyVersion;
   setPhotoBusy(true);
   try {
+    const expectedRevision = await getStudyRevision();
+    assertStudyVersion(version);
     if (!await confirmChange('本浏览器保存的相框照片会移除，恢复为默认山景。电脑上的原始照片不会改变。', '恢复默认画作？')) return;
+    assertStudyVersion(version);
     await room?.setPhoto(null);
-    try { await savePhoto(null); }
-    catch (error) { await room?.setPhoto(photoData).catch(() => {}); throw error; }
+    assertStudyVersion(version);
+    try { await savePhoto(null, { expectedRevision }); }
+    catch (error) { if (!isStaleStudy(version, error)) await room?.setPhoto(photoData).catch(() => {}); throw error; }
+    assertStudyVersion(version);
     photoData = null;
     photoStorageAvailable = true;
     updatePhotoPreview();
     toast('相框换回了温柔的山景。');
-  } catch (error) { toast(error.message || '照片暂时无法移除。'); }
-  finally { setPhotoBusy(false); }
+  } catch (error) { if (!isStaleStudy(version, error)) toast(error.message || '照片暂时无法移除。'); }
+  finally { if (version === studyVersion) setPhotoBusy(false); }
 });
 
 function downloadFile(data, name, mimeType) {
@@ -408,25 +445,36 @@ $('backupInput').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
   if (photoBusy) { event.target.value = ''; return; }
+  const version = studyVersion;
   setPhotoBusy(true);
   try {
     if (file.size > 3 * 1024 * 1024) throw new Error('存档超过 3 MB，请选择从本小屋导出的 JSON 文件。');
     let parsed;
     try { parsed = JSON.parse(await file.text()); } catch { throw new Error('存档不是有效的 JSON 文件，当前小屋没有更改。'); }
+    assertStudyVersion(version);
     const backup = validateBackup(parsed);
+    let expectedRevision;
+    try { expectedRevision = await getStudyRevision(); }
+    catch (error) { if (backup.photo !== null) throw error; }
+    assertStudyVersion(version);
     if (backup.photo) await decodeImage(backup.photo);
+    assertStudyVersion(version);
     if (!await confirmChange('这份存档会替换当前的名字、氛围、笔记、照片和互动记录，并重置专注计时。建议先导出当前存档。', '把这间小屋搬进来？')) return;
+    assertStudyVersion(version);
     const previous = { ...state };
     const previousPhoto = photoData;
     let photoSkipped = false;
     await room?.setPhoto(backup.photo);
+    assertStudyVersion(version);
     if (!saveState(backup.state)) {
       await room?.setPhoto(previousPhoto).catch(() => {});
       throw new Error('浏览器无法保存设置，导入已取消，当前小屋没有更改。');
     }
-    try { await savePhoto(backup.photo); photoStorageAvailable = true; }
+    try { await savePhoto(backup.photo, { expectedRevision }); assertStudyVersion(version); photoStorageAvailable = true; }
     catch (error) {
+      if (isStaleStudy(version, error)) throw error;
       await room?.setPhoto(previousPhoto).catch(() => {});
+      assertStudyVersion(version);
       if (backup.photo !== null) {
         const restored = saveState(previous);
         if (!restored) throw new Error('照片导入失败，设置回滚也未能保存。请立即导出当前内存存档备份后再刷新。');
@@ -436,13 +484,14 @@ $('backupInput').addEventListener('change', async event => {
       photoSkipped = true;
       photoStorageAvailable = false;
     }
+    assertStudyVersion(version);
     Object.assign(state, backup.state);
     photoData = photoSkipped ? previousPhoto : backup.photo;
     $('roomNameInput').value = state.roomName;
     applyState(); updatePhotoPreview(); resetTimer();
     toast(photoSkipped ? '设置和笔记已导入。照片存储暂不可用，原相框照片未改动。' : '欢迎回来。存档里的小屋，已经准备好了。', 5500);
-  } catch (error) { toast(error.message || '导入没有完成，请检查存档文件。', 5500); }
-  finally { setPhotoBusy(false); event.target.value = ''; }
+  } catch (error) { if (!isStaleStudy(version, error)) toast(error.message || '导入没有完成，请检查存档文件。', 5500); }
+  finally { if (version === studyVersion) setPhotoBusy(false); event.target.value = ''; }
 });
 
 applyState();
@@ -451,10 +500,93 @@ if (timer.deadline && remainingSeconds() === 0) completeTimer();
 const roomSwitcher = initRoomSwitcher({
   getStudyName: () => state.roomName,
   notify: toast,
+  onRequestStorage: () => storageManager?.open(),
   onChange(current) {
     room?.setPaused(current === 'gallery');
     audio.setSuspended(current === 'gallery');
   },
+});
+
+// 清理后同时丢弃内存里的旧副本，避免关页自动保存把已移除的笔记或计时写回。
+async function refreshStudyStorage() {
+  const version = ++studyVersion;
+  resettingStudy = true;
+  clearTimeout(noteTimeout);
+  if (activeConfirmation) finishConfirmation(false);
+  for (const id of ['booksDialog', 'photoDialog', 'settingsDialog']) if ($(id).open) $(id).close();
+  Object.assign(state, loadState());
+  timer = readTimer();
+  photoData = null;
+  setPhotoBusy(true);
+  $('roomNameInput').value = state.roomName;
+  $('bookTitleInput').value = state.bookTitle;
+  $('noteInput').value = state.notes;
+  $('noteCount').value = `${state.notes.length} / 8000`;
+  $('photoInput').value = '';
+  $('backupInput').value = '';
+  applyState(); renderTimer(); updatePhotoPreview();
+  room?.resetView();
+  const audioButton = $('audioToggle');
+  audioButton.setAttribute('aria-pressed', 'false');
+  audioButton.setAttribute('aria-label', '开启环境声音');
+  audioButton.title = '开启环境声音';
+  icon(audioButton, 'i-mute');
+  try {
+    await audio.setEnabled(false);
+    await room?.setPhoto(null);
+    assertStudyVersion(version);
+    const savedPhoto = await loadPhoto();
+    assertStudyVersion(version);
+    if (savedPhoto) await decodeImage(savedPhoto);
+    assertStudyVersion(version);
+    photoData = savedPhoto;
+    photoStorageAvailable = true;
+    if (photoData) await room?.setPhoto(photoData);
+    assertStudyVersion(version);
+  } catch (error) {
+    if (!isStaleStudy(version, error)) {
+      photoStorageAvailable = false;
+      toast('书房已更新，相框存储暂时无法读取。可以在本机存储管理中重试。', 5500);
+    }
+  } finally {
+    if (version === studyVersion) { resettingStudy = false; setPhotoBusy(false); updatePhotoPreview(); }
+  }
+}
+
+const unsubscribeStorageCleanup = subscribeStorageCleanup(({ cleared }) => {
+  const work = [];
+  if (cleared.includes('study')) work.push(refreshStudyStorage());
+  work.push(roomSwitcher.refreshStorage(cleared));
+  cleanupRefresh = Promise.allSettled(work).then(results => {
+    if (results.some(result => result.status === 'rejected')) toast('数据清理已执行，界面暂时未能全部刷新，请重新打开小屋。', 5500);
+    if (!storageCleanupRunning) storageManager?.refresh();
+  });
+});
+
+storageManager = initStorageManager({
+  trigger: $('storageManagerBtn'),
+  getOverview: getStorageOverview,
+  canClear() {
+    if (storageCleanupRunning || photoBusy || roomSwitcher.busy) {
+      toast('正在保存或整理素材，请等当前操作完成后再清理。', 5000);
+      return false;
+    }
+    return true;
+  },
+  async clearData(scope) {
+    storageCleanupRunning = true;
+    const includesStudy = scope === 'study' || scope === 'all';
+    if (includesStudy) { resettingStudy = true; clearTimeout(noteTimeout); }
+    try {
+      const result = await clearRoomData(scope);
+      await cleanupRefresh;
+      return result;
+    } finally {
+      storageCleanupRunning = false;
+      if (includesStudy) resettingStudy = false;
+    }
+  },
+  notify: toast,
 });
 
 async function initializeRoom() {
@@ -503,21 +635,28 @@ async function initializeRoom() {
       : '请确认浏览器支持 WebGL 并开启图形加速。若刚更新过小屋，请刷新页面，或换用较新的 Chrome、Edge、Firefox、Safari。';
     console.error('Miniroom could not initialize:', error);
   }
+  const photoVersion = studyVersion;
   try {
     const savedPhoto = await loadPhoto();
+    assertStudyVersion(photoVersion);
     if (savedPhoto) await decodeImage(savedPhoto);
+    assertStudyVersion(photoVersion);
     photoData = savedPhoto;
     photoStorageAvailable = true;
     try { if (photoData) await room?.setPhoto(photoData); }
     catch { toast('照片存档已经读取，画面暂时无法更新。原照片仍保存在本机。', 5000); }
   } catch (error) {
-    photoStorageAvailable = false;
-    toast(error.message || '相框照片暂时无法读取；设置和笔记仍可使用及导出。', 5000);
-  } finally { setPhotoBusy(false); updatePhotoPreview(); }
+    if (!isStaleStudy(photoVersion, error)) {
+      photoStorageAvailable = false;
+      toast(error.message || '相框照片暂时无法读取；设置和笔记仍可使用及导出。', 5000);
+    }
+  } finally { if (photoVersion === studyVersion) { setPhotoBusy(false); updatePhotoPreview(); } }
 }
 initializeRoom();
 window.addEventListener('pagehide', event => {
-  if ($('booksDialog').open) storeNotes(false);
-  persistTimer();
-  if (!event.persisted) { clearInterval(timerInterval); roomSwitcher.dispose(); audio.dispose(); room?.dispose(); }
+  if (!storageCleanupRunning && !resettingStudy) {
+    if ($('booksDialog').open) storeNotes(false);
+    // 开始、暂停、重置和完成时已保存计时；关页不再生成空计时记录。
+  }
+  if (!event.persisted) { clearInterval(timerInterval); unsubscribeStorageCleanup(); storageManager.dispose(); roomSwitcher.dispose(); audio.dispose(); room?.dispose(); }
 });

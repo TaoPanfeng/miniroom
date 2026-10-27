@@ -7,3 +7,4 @@ body[data-room=gallery]{--paper:#f6f3eb;--surface:#fffdf6;--ink:#3e4939;--muted:
 @media(max-width:420px){.topbar{gap:10px}.topbar .brand strong{font-size:21px;gap:7px}.topbar .brand strong span{font-size:18px}.topbar .brand{gap:8px}.topbar .brand-mark{width:34px;height:34px}.topbar-actions{gap:10px}.room-switch-button{padding:8px 7px}.room-switch-button>svg:first-child{display:none}.room-picker{width:calc(100vw - 24px)}.room-choice-art svg{height:104px}}
 @media(prefers-reduced-motion:reduce){.room-choice,.room-switch-button{transition:none}}
 @media(max-width:360px){.topbar .brand strong span{display:none}.topbar .brand strong{font-size:20px}.topbar-actions{gap:9px}}
+@media(max-width:440px){.topbar .brand strong span{display:none}.topbar-actions{gap:8px}}

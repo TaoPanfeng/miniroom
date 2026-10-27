@@ -1,5 +1,5 @@
 import { listMedia, addMediaFiles, getMediaBlob, updateMediaCrop, deleteMedia, getMediaStats, MAX_BATCH_FILES, MAX_ITEMS } from './media-store.js';
-import { openImageCrop } from './cropper.js';
+import { openImageCrop, closeImageCrop } from './cropper.js';
 
 const PATHS = {
   plus: '<path d="M12 4v16M4 12h16"/>',
@@ -53,11 +53,12 @@ function bindBackdrop(dialog, close) {
 }
 
 /** 照片小屋是独立视图，不写入书房的设置、笔记或单张相框。 */
-export function createGallery({ container, notify = () => {}, onRequestStudy = () => {} }) {
+export function createGallery({ container, notify = () => {}, onRequestStudy = () => {}, onRequestStorage = () => {} }) {
   if (!(container instanceof HTMLElement)) throw new Error('照片小屋缺少容器。');
   let items = [], filter = 'all', sort = 'newest', selecting = false, selected = new Set();
-  let active = false, busy = false, disposed = false, loadVersion = 0, dragDepth = 0;
+  let active = false, busy = false, disposed = false, loadVersion = 0, operationVersion = 0, dragDepth = 0;
   const thumbnailURLs = new Map();
+  const downloadURLs = new Map();
   let noticeTimer = 0, currentViewer = null, viewerVersion = 0, viewerURL = null;
   let viewerItems = [], viewerIndex = -1, viewerImage = null, viewerVideo = null;
   let zoom = 1, panX = 0, panY = 0, imageWidth = 0, imageHeight = 0, pointer = null;
@@ -90,7 +91,7 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
         <div class="gw-filter-empty" hidden><span aria-hidden="true">⌁</span><p>这里还没有这类回忆。</p><button type="button" class="gw-show-all gw-text-button">查看全部</button></div>
         <div class="gw-grid"></div>
       </div>
-      <footer class="gw-footer"><p class="gw-local-note"></p><span class="gw-storage-stat">本机保存 · 最多 ${MAX_ITEMS} 项</span></footer>
+      <footer class="gw-footer"><p class="gw-local-note"></p><div class="gw-toolbar-right"><span class="gw-storage-stat">本机保存 · 最多 ${MAX_ITEMS} 项</span><button type="button" class="gw-storage-manage gw-text-button" aria-label="管理本机存储与清理数据">管理存储 / 清理</button></div></footer>
       <p class="gw-storage-detail">照片小屋独立保存在当前浏览器，书房的 JSON 存档不包含这里的素材。原文件保留，裁剪后还能重新调整。</p>
     </div>
     <div class="gw-drop-overlay" hidden><div><span aria-hidden="true">＋</span><h2>把回忆放在这里</h2><p>松开鼠标，添加照片和视频</p></div></div>`;
@@ -142,6 +143,11 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
     for (const url of thumbnailURLs.values()) URL.revokeObjectURL(url);
     thumbnailURLs.clear();
   }
+  function cleanupDownloads() {
+    for (const [url, timer] of downloadURLs) { clearTimeout(timer); URL.revokeObjectURL(url); }
+    downloadURLs.clear();
+  }
+  function currentOperation(version) { return !disposed && version === operationVersion; }
   function updateSelection() {
     selectToggle.setAttribute('aria-pressed', String(selecting));
     $('.gw-selection-bar').hidden = !selecting;
@@ -200,12 +206,12 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
     }
     updateSelection();
   }
-  async function refreshStats() {
+  async function refreshStats(version = loadVersion) {
     try {
       const stats = await getMediaStats();
-      if (disposed) return;
+      if (disposed || version !== loadVersion) return;
       $('.gw-storage-stat').textContent = `${stats.count} / ${MAX_ITEMS} 项 · 本机占用 ${formatBytes(stats.bytes)}`;
-    } catch { if (!disposed) $('.gw-storage-stat').textContent = `本机保存 · ${items.length} / ${MAX_ITEMS} 项`; }
+    } catch { if (!disposed && version === loadVersion) $('.gw-storage-stat').textContent = `本机保存 · ${items.length} / ${MAX_ITEMS} 项`; }
   }
   async function refresh() {
     const version = ++loadVersion;
@@ -214,7 +220,7 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
       const loaded = await listMedia();
       if (disposed || version !== loadVersion) return;
       items = loaded; selected = new Set([...selected].filter(id => items.some(item => item.id === id)));
-      renderGrid(); await refreshStats();
+      renderGrid(); await refreshStats(version);
     } catch (error) {
       if (disposed || version !== loadVersion) return;
       $('.gw-load-error').hidden = false;
@@ -234,38 +240,53 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
   }
   async function importFiles(files) {
     if (busy || !active || disposed || !files.length) return;
+    const operation = ++operationVersion;
     report.hidden = true; notice.hidden = true; setBusy(true); progress.hidden = false;
     $('.gw-progress-title').textContent = '正在把回忆挂上墙';
     const meter = progress.querySelector('progress'); meter.max = files.length; meter.value = 0;
     try {
       const result = await addMediaFiles(files, { onProgress({ current, total, name }) {
+        if (!currentOperation(operation)) return;
         meter.max = total || files.length; meter.value = current;
         $('.gw-progress-count').textContent = `${current} / ${total}`;
         $('.gw-progress-file').textContent = name;
       } });
+      if (!currentOperation(operation)) return;
       await refresh();
+      if (!currentOperation(operation)) return;
       showImportReport(result.added.length, result.failed);
       announce(result.added.length ? `已添加 ${result.added.length} 段回忆。点击可以放大查看或播放，多选后可逐张裁剪。` : '这次没有添加素材，请查看下方原因。', 6500);
-    } catch (error) { announce(error.message || '素材没有添加成功，请稍后再试。', 7000); await refresh(); }
-    finally { progress.hidden = true; setBusy(false); input.value = ''; }
+    } catch (error) {
+      if (!currentOperation(operation)) return;
+      announce(error.message || '素材没有添加成功，请稍后再试。', 7000); await refresh();
+    } finally {
+      if (currentOperation(operation)) { progress.hidden = true; setBusy(false); input.value = ''; }
+    }
   }
   async function cropItems(ids) {
     if (busy || disposed) return;
     const photos = ids.map(id => items.find(item => item.id === id)).filter(item => item?.type === 'image');
     if (!photos.length) { announce('选择一张或多张照片后，就可以逐张裁剪。'); return; }
+    const operation = ++operationVersion;
     closeViewer(); setBusy(true); let saved = 0;
     try {
       for (let index = 0; index < photos.length; index++) {
         const item = photos[index], blob = await getMediaBlob(item.id, 'original');
+        if (!currentOperation(operation)) return;
         const result = await openImageCrop({ blob, name: item.name, crop: item.crop, queue: photos.length > 1 ? { index, total: photos.length } : null });
+        if (!currentOperation(operation)) return;
         if (!result) break;
         if (result.action === 'skip') continue;
         const updated = await updateMediaCrop(item.id, { crop: result.crop, display: result.display, thumb: result.thumb });
+        if (!currentOperation(operation)) return;
         items = items.map(existing => existing.id === item.id ? updated : existing); saved++;
       }
       if (saved) announce(`已保存 ${saved} 张照片的裁剪。原图保留，可以随时重新调整。`);
-    } catch (error) { announce(`${saved ? `已有 ${saved} 张裁剪保存成功。` : ''}${error.message || '这张照片暂时无法裁剪，请重试。'}`, 7000); }
-    finally { setBusy(false); if (active) renderGrid(); await refreshStats(); }
+    } catch (error) {
+      if (currentOperation(operation)) announce(`${saved ? `已有 ${saved} 张裁剪保存成功。` : ''}${error.message || '这张照片暂时无法裁剪，请重试。'}`, 7000);
+    } finally {
+      if (currentOperation(operation)) { setBusy(false); if (active) renderGrid(); await refreshStats(); }
+    }
   }
   function askDelete(count) {
     confirmDialog.querySelector('.gw-confirm-message').textContent = `将从这间照片小屋移除 ${count} 项。电脑中的原文件不会改变；小屋中的裁剪记录会一起移除。`;
@@ -277,14 +298,17 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
   }
   async function removeSelected() {
     if (busy || !selected.size) return;
+    const operation = ++operationVersion;
     const ids = [...selected]; setBusy(true);
     try {
-      if (!await askDelete(ids.length)) return;
+      if (!await askDelete(ids.length) || !currentOperation(operation)) return;
       await deleteMedia(ids);
+      if (!currentOperation(operation)) return;
       items = items.filter(item => !ids.includes(item.id)); selected.clear(); selecting = false;
-      renderGrid(); await refreshStats(); announce(`已从照片墙移除 ${ids.length} 项。`);
-    } catch (error) { announce(error.message || '未能移除，请重试。'); }
-    finally { setBusy(false); }
+      renderGrid(); await refreshStats();
+      if (currentOperation(operation)) announce(`已从照片墙移除 ${ids.length} 项。`);
+    } catch (error) { if (currentOperation(operation)) announce(error.message || '未能移除，请重试。'); }
+    finally { if (currentOperation(operation)) setBusy(false); }
   }
 
   function cleanupMedia() {
@@ -358,15 +382,20 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
   async function downloadOriginal() {
     const id = currentViewer, item = items.find(entry => entry.id === id);
     if (!item) return;
+    const version = viewerVersion;
     v$('.gw-viewer-download').disabled = true;
     try {
       const blob = await getMediaBlob(id, 'original');
-      if (currentViewer !== id || disposed) return;
+      if (currentViewer !== id || version !== viewerVersion || disposed) return;
       const url = URL.createObjectURL(blob), anchor = document.createElement('a');
       anchor.href = url; anchor.download = item.name.replace(/[\\/\u0000-\u001f]/g, '_');
-      document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
-    } catch (error) { v$('.gw-viewer-message').hidden = false; v$('.gw-viewer-message').textContent = error.message || '原文件暂时无法下载。'; }
-    finally { if (currentViewer === id) v$('.gw-viewer-download').disabled = false; }
+      document.body.append(anchor); anchor.click(); anchor.remove();
+      downloadURLs.set(url, setTimeout(() => { URL.revokeObjectURL(url); downloadURLs.delete(url); }, 1500));
+    } catch (error) {
+      if (currentViewer === id && version === viewerVersion && !disposed) {
+        v$('.gw-viewer-message').hidden = false; v$('.gw-viewer-message').textContent = error.message || '原文件暂时无法下载。';
+      }
+    } finally { if (currentViewer === id && version === viewerVersion && !disposed) v$('.gw-viewer-download').disabled = false; }
   }
   const viewerResize = new ResizeObserver(fitViewerImage); viewerResize.observe(stage);
   stage.addEventListener('pointerdown', event => {
@@ -422,6 +451,7 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
   $('.gw-show-all').addEventListener('click', () => container.querySelector('[data-filter="all"]').click());
   $('.gw-sort').addEventListener('change', event => { sort = event.target.value; renderGrid(); });
   $('.gw-retry').addEventListener('click', refresh); $('.gw-back-study').addEventListener('click', onRequestStudy);
+  $('.gw-storage-manage').addEventListener('click', () => onRequestStorage());
   container.addEventListener('dragenter', event => {
     if (!active || !event.dataTransfer?.types.includes('Files')) return;
     event.preventDefault(); dragDepth++; if (!busy) $('.gw-drop-overlay').hidden = false;
@@ -437,6 +467,32 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
   });
 
   return {
+    get busy() { return busy; },
+    async refreshStorage() {
+      if (disposed) return;
+      // Invalidate in-flight UI work before closing dialogs that resolve promises.
+      const operation = ++operationVersion;
+      loadVersion++;
+      setBusy(true);
+      closeViewer(); closeImageCrop(); finishDeleteConfirmation(false);
+      viewerItems = []; viewerIndex = -1;
+      cleanupThumbnails(); cleanupDownloads();
+      items = []; selected.clear(); selecting = false;
+      input.value = ''; dragDepth = 0; $('.gw-drop-overlay').hidden = true;
+      clearTimeout(noticeTimer); notice.hidden = true; notice.textContent = '';
+      report.hidden = true; report.open = false; report.querySelector('ul').replaceChildren();
+      progress.hidden = true; progress.querySelector('progress').value = 0;
+      $('.gw-progress-count').textContent = ''; $('.gw-progress-file').textContent = '';
+      renderGrid();
+      $('.gw-storage-stat').textContent = '正在更新本机占用…';
+      try { await refresh(); }
+      finally {
+        if (currentOperation(operation)) {
+          if (!active) { cleanupThumbnails(); grid.replaceChildren(); }
+          setBusy(false);
+        }
+      }
+    },
     async open() {
       if (disposed) return false;
       active = true; container.hidden = false; await refresh(); return !disposed;
@@ -448,8 +504,9 @@ export function createGallery({ container, notify = () => {}, onRequestStudy = (
     },
     dispose() {
       if (disposed) return;
-      disposed = true; active = false; loadVersion++; clearTimeout(noticeTimer); closeViewer();
-      finishDeleteConfirmation(false); cleanupThumbnails(); viewerResize.disconnect(); viewer.remove(); confirmDialog.remove();
+      disposed = true; active = false; loadVersion++; operationVersion++; clearTimeout(noticeTimer); closeViewer(); closeImageCrop();
+      finishDeleteConfirmation(false); cleanupThumbnails(); cleanupDownloads(); viewerResize.disconnect(); viewer.remove(); confirmDialog.remove();
+      items = []; viewerItems = []; selected.clear();
       container.replaceChildren(); container.hidden = true;
     },
   };

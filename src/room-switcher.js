@@ -1,5 +1,5 @@
 /** 两间小屋共享入口，书房状态与照片小屋的媒体数据各自保存。 */
-export function initRoomSwitcher({ getStudyName, onChange, notify }) {
+export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStorage = () => {} }) {
   const button = document.getElementById('roomSwitcherBtn');
   const picker = document.getElementById('roomPickerDialog');
   const study = document.getElementById('studyRoomView');
@@ -38,7 +38,7 @@ export function initRoomSwitcher({ getStudyName, onChange, notify }) {
         if (!gallery) {
           const { createGallery } = await import('./gallery.js');
           if (disposed) return false;
-          gallery = createGallery({ container: galleryHost, notify, onRequestStudy: () => enter('study') });
+          gallery = createGallery({ container: galleryHost, notify, onRequestStudy: () => enter('study'), onRequestStorage });
         }
         // open() 会同步显示加载状态；同一轮隐藏书房，慢存储时也不叠出两间小屋。
         const opening = gallery.open();
@@ -84,6 +84,13 @@ export function initRoomSwitcher({ getStudyName, onChange, notify }) {
 
   return {
     get current() { return current; },
+    get busy() { return switching || Boolean(gallery?.busy); },
+    async refreshStorage(cleared = []) {
+      if (disposed) return;
+      paint();
+      if (gallery && cleared.includes('gallery')) await gallery.refreshStorage();
+      if (!disposed) paint();
+    },
     dispose() {
       disposed = true;
       gallery?.dispose();

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./assets/room-switcher.css">
   <link rel="stylesheet" href="./assets/gallery.css">
+  <link rel="stylesheet" href="./assets/storage-manager.css">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body data-mood="day">
@@ -24,6 +25,7 @@
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 6h4l2-3h6l2 3h4v15H3Z"/><circle cx="12" cy="13" r="4"/></symbol>
     <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1.2-1.5 2.5M12 17h.01"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 3v7m0 4v7M12 3v12m0 4v2M20 3v2m0 4v12M1 10h6m2 9h6m2-14h6"/></symbol>
+    <symbol id="i-storage" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
@@ -47,6 +49,7 @@
     <div class="topbar-center"><span class="live-dot"></span>一间小屋，一点自己的时间</div>
     <nav class="topbar-actions" aria-label="页面工具">
       <button id="roomSwitcherBtn" class="room-switch-button" aria-haspopup="dialog" aria-label="切换小屋，当前在书房"><svg><use href="#i-house"/></svg><span>切换小屋</span><small id="currentRoomLabel">书房</small><svg class="room-switch-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+      <button id="storageManagerBtn" class="text-button storage-manager-trigger" aria-haspopup="dialog" aria-label="本机存储管理" title="本机存储管理 · 清理缓存"><svg><use href="#i-storage"/></svg><span>本机存储</span></button>
       <button id="helpBtn" class="text-button" aria-label="使用指南"><svg><use href="#i-help"/></svg><span>使用指南</span></button>
       <button id="settingsBtn" class="text-button" aria-label="小屋设置"><svg><use href="#i-sliders"/></svg><span>小屋设置</span></button>
     </nav>

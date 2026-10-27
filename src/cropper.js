@@ -2,6 +2,11 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 let activeEditor = null;
 
+/** Cancel an open editor when its underlying local media has been cleared. */
+export function closeImageCrop() {
+  activeEditor?.(null);
+}
+
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 /** Pure crop geometry, shared by pointer controls and the final image export. */

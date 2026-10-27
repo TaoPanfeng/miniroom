@@ -18,7 +18,7 @@ let writeQueue = Promise.resolve();
 function storageError(error, fallback = '照片墙存档暂时不可用，请检查浏览器的存储设置。') {
   if (error?.name === 'QuotaExceededError') return new Error('本浏览器的存储空间不足。请删除不需要的素材，或减少本次添加的文件。');
   if (error?.name === 'SecurityError' || error?.name === 'NotAllowedError') return new Error('浏览器没有允许本地存储，请检查站点存储权限后重试。');
-  return error instanceof Error && error.name === 'Error' ? error : new Error(fallback);
+  return error instanceof Error && ['Error', 'StaleWriteError'].includes(error.name) ? error : new Error(fallback);
 }
 
 function openDatabase() {
@@ -28,11 +28,12 @@ function openDatabase() {
     let request;
     let settled = false;
     const fail = error => { if (settled) return; settled = true; reject(storageError(error)); };
-    try { request = indexedDB.open(DB_NAME, 1); } catch (error) { fail(error); return; }
+    try { request = indexedDB.open(DB_NAME, 2); } catch (error) { fail(error); return; }
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains('items')) db.createObjectStore('items', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('assets')) db.createObjectStore('assets', { keyPath: ['mediaId', 'variant'] });
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
     };
     request.onsuccess = () => {
       const db = request.result;
@@ -54,6 +55,47 @@ function serializeWrite(action) {
   const pending = writeQueue.then(action, action);
   writeQueue = pending.catch(() => {});
   return pending;
+}
+
+const readRevision = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
+const mediaBytes = item => Math.max(0, Number.isFinite(item.storageBytes) ? item.storageBytes : Number(item.size) || 0);
+function cleanupError() {
+  const error = new Error('照片墙已在另一个操作中清理，本次未完成的添加或裁剪已取消。请重新选择素材。');
+  error.name = 'StaleWriteError';
+  return error;
+}
+async function getMediaRevision() {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('meta', 'readonly');
+    const request = tx.objectStore('meta').get('cleanup-revision');
+    let revision = 0;
+    request.onsuccess = () => { revision = readRevision(request.result); };
+    tx.oncomplete = () => resolve(revision);
+    tx.onerror = event => reject(storageError(event.target?.error || tx.error));
+    tx.onabort = () => reject(storageError(tx.error));
+  });
+}
+
+/** 与解码队列分开执行，使清理能立即作废其他标签页和本页的在途导入。 */
+export async function clearGalleryStorage() {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    let bytes = 0;
+    const tx = db.transaction(['items', 'assets', 'meta'], 'readwrite');
+    const items = tx.objectStore('items');
+    const meta = tx.objectStore('meta');
+    const revision = meta.get('cleanup-revision');
+    revision.onsuccess = () => meta.put(readRevision(revision.result) + 1, 'cleanup-revision');
+    const cursor = items.openCursor();
+    cursor.onsuccess = () => {
+      if (cursor.result) { bytes += mediaBytes(cursor.result.value); cursor.result.continue(); }
+      else { items.clear(); tx.objectStore('assets').clear(); }
+    };
+    tx.oncomplete = () => resolve({ bytes });
+    tx.onerror = event => reject(storageError(event.target?.error || tx.error, '照片墙没有清理，请稍后重试。'));
+    tx.onabort = () => reject(storageError(tx.error, '清理已中断，照片墙原存档保持不变。'));
+  });
 }
 
 function validId(id) { return typeof id === 'string' && /^[a-zA-Z0-9_-]{1,96}$/.test(id); }
@@ -200,20 +242,24 @@ async function prepareFile(classified) {
   };
 }
 
-async function saveNewMedia(prepared) {
+async function saveNewMedia(prepared, expectedRevision) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     let reason;
-    const tx = db.transaction(['items', 'assets'], 'readwrite');
+    const tx = db.transaction(['items', 'assets', 'meta'], 'readwrite');
     const items = tx.objectStore('items');
     const assets = tx.objectStore('assets');
-    const count = items.count();
-    count.onsuccess = () => {
-      if (count.result >= MAX_ITEMS) { reason = new Error(`照片墙最多保存 ${MAX_ITEMS} 项素材，请先整理一些素材。`); tx.abort(); return; }
-      const id = prepared.metadata.id;
-      items.add(prepared.metadata);
-      assets.add({ mediaId: id, variant: 'original', blob: prepared.original });
-      if (prepared.display) assets.add({ mediaId: id, variant: 'display', blob: prepared.display });
+    const revision = tx.objectStore('meta').get('cleanup-revision');
+    revision.onsuccess = () => {
+      if (readRevision(revision.result) !== expectedRevision) { reason = cleanupError(); tx.abort(); return; }
+      const count = items.count();
+      count.onsuccess = () => {
+        if (count.result >= MAX_ITEMS) { reason = new Error(`照片墙最多保存 ${MAX_ITEMS} 项素材，请先整理一些素材。`); tx.abort(); return; }
+        const id = prepared.metadata.id;
+        items.add(prepared.metadata);
+        assets.add({ mediaId: id, variant: 'original', blob: prepared.original });
+        if (prepared.display) assets.add({ mediaId: id, variant: 'display', blob: prepared.display });
+      };
     };
     tx.oncomplete = () => resolve(prepared.metadata);
     tx.onerror = event => reject(reason || storageError(event.target?.error || tx.error, '素材保存失败，请检查本地存储空间。'));
@@ -223,9 +269,13 @@ async function saveNewMedia(prepared) {
 
 export async function addMediaFiles(files, { onProgress } = {}) {
   const selected = Array.from(files || []);
+  if (!selected.length) return { added: [], failed: [] };
+  // 在加入队列时快照，避免前一个批次等待期间发生清理后继续旧批次。
+  const revisionResult = getMediaRevision().then(value => ({ value }), error => ({ error }));
   return serializeWrite(async () => {
     const added = [], failed = [];
-    let db, unavailable;
+    const initial = await revisionResult;
+    let db, unavailable = initial.error;
     for (let index = 0; index < selected.length; index++) {
       const file = selected[index];
       const name = String(file?.name || '未命名素材').slice(0, 240);
@@ -240,17 +290,22 @@ export async function addMediaFiles(files, { onProgress } = {}) {
         }
         // 在解码大视频前检查是否已满；真正提交时仍在写事务里再次检查。
         const count = await new Promise((resolve, reject) => {
-          const tx = db.transaction('items', 'readonly');
+          let reason;
+          const tx = db.transaction(['items', 'meta'], 'readonly');
           const request = tx.objectStore('items').count();
+          const revision = tx.objectStore('meta').get('cleanup-revision');
+          revision.onsuccess = () => {
+            if (readRevision(revision.result) !== initial.value) { reason = cleanupError(); unavailable = reason; tx.abort(); }
+          };
           let value = 0;
           request.onsuccess = () => { value = request.result; };
           tx.oncomplete = () => resolve(value);
-          tx.onerror = event => reject(storageError(event.target?.error || tx.error));
-          tx.onabort = () => reject(storageError(tx.error));
+          tx.onerror = event => reject(reason || storageError(event.target?.error || tx.error));
+          tx.onabort = () => reject(reason || storageError(tx.error));
         });
         if (count >= MAX_ITEMS) throw new Error(`照片墙最多保存 ${MAX_ITEMS} 项素材，请先整理一些素材。`);
         const prepared = await prepareFile(classified);
-        added.push(await saveNewMedia(prepared));
+        added.push(await saveNewMedia(prepared, initial.value));
       } catch (error) { failed.push({ name, message: storageError(error).message }); }
     }
     return { added, failed };
@@ -276,12 +331,17 @@ export async function updateMediaCrop(id, { crop, display, thumb } = {}) {
   const normalized = normalizedCrop(crop);
   validateDerivative(display, 12 * 1024 * 1024);
   validateDerivative(thumb, 2 * 1024 * 1024);
+  const revisionResult = getMediaRevision().then(value => ({ value }), error => ({ error }));
   return serializeWrite(async () => {
+    const initial = await revisionResult;
+    if (initial.error) throw initial.error;
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
       let updated, reason;
-      const tx = db.transaction(['items', 'assets'], 'readwrite');
+      const tx = db.transaction(['items', 'assets', 'meta'], 'readwrite');
       const items = tx.objectStore('items');
+      const revision = tx.objectStore('meta').get('cleanup-revision');
+      revision.onsuccess = () => { if (readRevision(revision.result) !== initial.value) { reason = cleanupError(); tx.abort(); } };
       const request = items.get(id);
       request.onsuccess = () => {
         const item = request.result;
@@ -317,7 +377,7 @@ export async function deleteMedia(ids) {
   });
 }
 
-export async function getMediaStats() {
+export async function getMediaStats({ includeOriginEstimate = true } = {}) {
   const db = await openDatabase();
   const result = await new Promise((resolve, reject) => {
     const stats = { count: 0, images: 0, videos: 0, bytes: 0 };
@@ -328,13 +388,14 @@ export async function getMediaStats() {
       if (!cursor) return;
       const item = cursor.value;
       stats.count++; stats[item.type === 'video' ? 'videos' : 'images']++;
-      stats.bytes += Number.isFinite(item.storageBytes) ? item.storageBytes : item.size;
+      stats.bytes += mediaBytes(item);
       cursor.continue();
     };
     tx.oncomplete = () => resolve(stats);
     tx.onerror = event => reject(storageError(event.target?.error || tx.error));
     tx.onabort = () => reject(storageError(tx.error));
   });
+  if (!includeOriginEstimate) return result;
   try {
     const estimate = await globalThis.navigator?.storage?.estimate?.();
     if (Number.isFinite(estimate?.usage)) result.usage = estimate.usage;
