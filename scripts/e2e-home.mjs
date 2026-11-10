@@ -52,11 +52,21 @@ try {
     assert.equal(await homeCanvas.getAttribute('data-roof-visible'),'true','Indoor mode must have a sealed roof');
     const initialPosition=await homeCanvas.getAttribute('data-position');
     assert.ok(initialPosition?.startsWith('0.53,3.83'),'Default perspective must begin at entrance: '+initialPosition);
+    await homeCanvas.focus();
     await page.keyboard.down('w');
-    await page.waitForTimeout(450);
+    const didWalk=await page.waitForFunction((first)=>{
+      const canvas=document.querySelector('.home-canvas');
+      return canvas?.dataset.position && canvas.dataset.position!==first;
+    },initialPosition,{timeout:4500}).then(()=>true,()=>false);
+    const movementDiagnostics=await page.evaluate(()=>({
+      position:document.querySelector('.home-canvas')?.dataset.position,
+      frames:document.querySelector('.home-canvas')?.dataset.renderFrames,
+      key:document.querySelector('.home-canvas')?.dataset.pressedKeys,
+      mode:document.querySelector('.home-canvas')?.dataset.cameraMode,
+      activeRoom:document.body.dataset.room
+    }));
     await page.keyboard.up('w');
-    const walked=await homeCanvas.getAttribute('data-position');
-    assert.notEqual(walked,initialPosition,'W should move the viewer inside the corridor');
+    assert.ok(didWalk,'W should move the viewer inside the corridor; debug '+JSON.stringify(movementDiagnostics));
     await page.locator('[data-home-tool="reset"]').click();
     assert.equal(await homeCanvas.getAttribute('data-position'),initialPosition,'Entrance reset must restore the same coordinates');
     await page.locator('[data-home-tool="roof"]').click();

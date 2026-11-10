@@ -483,6 +483,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   function setWalkKey(code,pressed) {
     if(!['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(code))return;
     if(pressed)walkKeys.add(code);else walkKeys.delete(code);
+    canvas.dataset.pressedKeys=[...walkKeys].join(',');
     kick(160);
   }
   function keyDown(event) {
