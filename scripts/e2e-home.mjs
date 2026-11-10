@@ -56,6 +56,25 @@ try {
   await page.screenshot({path:new URL('home-desktop.png',output).pathname});
   passed('home camera tools and cutaway toggle');
 
+  await page.locator('[data-home-tool="rooms"]').click();
+  assert.equal(await page.locator('.home-room-nav').isVisible(),true,'Room navigation did not open');
+  assert.equal(await page.locator('[data-home-focus]').count(),9);
+  await page.locator('[data-home-focus="master"]').click();
+  assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),'master');
+  assert.equal(await page.locator('.home-room-nav').isVisible(),false);
+  await page.locator('[data-home-tool="rooms"]').click();
+  await page.locator('[data-home-focus="loft"]').click();
+  assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),'loft');
+  await page.waitForTimeout(1050);
+  await page.screenshot({path:new URL('home-loft.png',output).pathname});
+  await page.locator('[data-home-tool="rooms"]').click();
+  await page.locator('[data-home-focus="all"]').click();
+  assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),null);
+  await page.locator('[data-home-tool="rooms"]').click();
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.home-room-nav').isVisible(),false);
+  passed('8 room inspection targets including pull-up loft, focus reset and Escape close');
+
   await enter('study');
   await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
   assert.equal(await page.locator('#sceneError').isVisible(),false,'Study rendered an error');
@@ -108,6 +127,39 @@ try {
   assert.ok(sizes.width<=sizes.viewport+3,'Horizontal overflow on mobile: '+JSON.stringify(sizes));
   assert.ok(await page.locator('[data-home-tool="reset"]').isVisible(),'Home controls missing on mobile');
   passed('390px mobile viewport fits and keeps controls available');
+  await page.locator('[data-home-tool="rooms"]').click();
+  assert.ok(await page.locator('.home-room-nav').isVisible(),'Room navigation invisible on mobile');
+  const mobilePanel=await page.locator('.home-room-nav').boundingBox();
+  assert.ok(mobilePanel && mobilePanel.x>=-2 && mobilePanel.x+mobilePanel.width<=393,'Mobile navigation overflows viewport');
+  await page.locator('[data-home-focus="kitchen"]').click();
+  assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),'kitchen');
+  await page.locator('[data-home-tool="reset"]').click();
+  passed('mobile room navigation fits and focuses correctly');
+
+  // 不支持 WebGL 的设备仍能查看户型，并且「俯视」真的切换投影。
+  const fallbackContext=await browser.newContext({viewport:{width:1090,height:740}});
+  await fallbackContext.addInitScript(()=>{
+    const original=HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext=function(kind,...args) {
+      if(['webgl','webgl2','experimental-webgl'].includes(kind))return null;
+      return original.call(this,kind,...args);
+    };
+  });
+  const fallbackPage=await fallbackContext.newPage();
+  const fallbackErrors=[];
+  fallbackPage.on('pageerror',error=>fallbackErrors.push(error.message));
+  await fallbackPage.goto(host,{waitUntil:'domcontentloaded'});
+  await fallbackPage.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
+  assert.equal(await fallbackPage.locator('.home-error').isVisible(),false,'Canvas fallback failed');
+  assert.equal(await fallbackPage.locator('.home-compat').isVisible(),true,'Canvas fallback badge missing');
+  await fallbackPage.locator('[data-home-tool="top"]').click();
+  await fallbackPage.locator('[data-home-tool="rooms"]').click();
+  await fallbackPage.locator('[data-home-focus="loft"]').click();
+  assert.equal(await fallbackPage.locator('#homeRoomView').getAttribute('data-focus'),'loft');
+  await fallbackPage.screenshot({path:new URL('home-canvas-fallback.png',output).pathname});
+  assert.deepEqual(fallbackErrors,[],'Canvas fallback runtime errors: '+fallbackErrors.join('; '));
+  await fallbackContext.close();
+  passed('WebGL-disabled Chrome uses functional 2D top view and room highlighting');
 
   assert.deepEqual(pageErrors,[],'Browser runtime errors: '+pageErrors.join('; '));
   passed('no uncaught browser errors');

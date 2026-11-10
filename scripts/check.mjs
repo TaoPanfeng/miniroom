@@ -56,7 +56,7 @@ if (errors.length) {
 
 
 // 户型与入口基本契约：部署前检查约 50㎡、房间不重叠、三入口均在。
-const { HOME_PLAN, HOME_ROOMS, homeArea } = await import('../src/home-layout.js');
+const { HOME_PLAN, HOME_ROOMS, HOME_FOCUS, homeArea, roomAt } = await import('../src/home-layout.js');
 const totalArea = HOME_ROOMS.reduce((sum, key) => sum + homeArea(key), 0);
 if (totalArea < 45 || totalArea > 58) errors.push('Home area estimate outside expected 50 m² range: ' + totalArea);
 for (let i=0;i<HOME_ROOMS.length;i++) for(let j=i+1;j<HOME_ROOMS.length;j++){
@@ -69,5 +69,12 @@ for(const room of ['home','study','gallery']){
   if(!html.includes('data-room-choice="'+room+'"'))errors.push('Missing room picker choice: '+room);
 }
 if(!html.includes('id="homeRoomView"'))errors.push('Missing home view container');
+for (const [key, spot] of Object.entries(HOME_FOCUS)) {
+  if (!HOME_PLAN[spot.room]) errors.push('Unknown focus room: ' + key);
+  if (roomAt(spot.x,spot.z) !== spot.room) errors.push('Focus outside expected room: ' + key);
+  if (!Number.isFinite(spot.y) || spot.y < 0 || spot.y > 3) errors.push('Invalid focus height: ' + key);
+  if (!Number.isFinite(spot.zoom) || spot.zoom < 1 || spot.zoom > 2.5) errors.push('Invalid focus zoom: ' + key);
+}
+if (Object.keys(HOME_FOCUS).length !== 8) errors.push('Expected 7 room focuses and 1 loft focus');
 if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}
 else console.log('Home layout verified: '+HOME_ROOMS.length+' rooms, ~'+totalArea.toFixed(1)+' m²; 3 room choices.');

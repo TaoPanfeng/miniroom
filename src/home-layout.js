@@ -20,3 +20,19 @@ export function roomAt(x, z) {
     return x >= r.x1 && x <= r.x2 && z >= r.z1 && z <= r.z2;
   }) || null;
 }
+
+
+/**
+ * 逐房间观察视点（米）。
+ * 仅用于查看和人工校对，不改变房屋实际建模尺寸或既有存档。
+ */
+export const HOME_FOCUS = Object.freeze({
+  master: { label: '主卧', x: -2.58, y: .75, z: -.85, zoom: 1.50, room: 'master' },
+  balcony: { label: '阳台', x: -2.10, y: .80, z: -3.39, zoom: 1.65, room: 'balcony' },
+  child: { label: '次卧', x: 1.64, y: .73, z: -1.52, zoom: 1.77, room: 'child' },
+  living: { label: '客厅', x: 1.46, y: .72, z: .91, zoom: 1.72, room: 'living' },
+  bathroom: { label: '卫生间', x: -1.12, y: .80, z: 3.22, zoom: 2.0, room: 'bathroom' },
+  passage: { label: '入户过道', x: .50, y: .80, z: 3.18, zoom: 2.03, room: 'passage' },
+  kitchen: { label: '厨房', x: 2.18, y: .80, z: 3.25, zoom: 1.93, room: 'kitchen' },
+  loft: { label: '引体架与夹层', x: .52, y: 2.15, z: 3.11, zoom: 2.23, room: 'passage' },
+});

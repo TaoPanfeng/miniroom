@@ -45,3 +45,40 @@ body[data-room="home"] .room-switch-button{background:#fffdf7;box-shadow:0 2px 1
 }
 @media(max-width:380px){body[data-room="home"] .topbar .brand strong span{display:none}}
 @media(prefers-reduced-motion:reduce){.home-camera-tools button{transition:none}}
+
+
+/* 可折叠房间导航：默认隐藏，不占用房屋主画面的宽度。 */
+.home-room-nav{
+  position:absolute;right:clamp(13px,3vw,48px);bottom:92px;
+  z-index:5;width:min(356px,calc(100vw - 30px));
+  max-height:min(440px,calc(100svh - 185px));overflow:auto;
+  padding:17px;border-radius:17px;
+  background:#fffdf8f5;border:1px solid #e1e4d9;
+  box-shadow:0 20px 55px #4f5b4d27;
+  backdrop-filter:blur(14px);
+}
+.home-room-nav-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:13px}
+.home-room-nav-title strong{font-size:13px;font-weight:600;color:#465d4c}
+.home-room-nav-title small{font-size:10px;color:#9aa597}
+.home-room-nav-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.home-room-nav-grid button,.home-room-nav-all{
+  border:1px solid #e2e7db;border-radius:10px;
+  min-height:39px;padding:8px 9px;background:#f9faf4;
+  text-align:center;color:#526952;font-size:11px;line-height:1.45;
+  transition:background .16s,border-color .16s;
+}
+.home-room-nav-grid button:hover,.home-room-nav-grid button[aria-pressed="true"]{
+  background:#e9eee2;border-color:#9db29b;color:#314a36;
+}
+.home-room-nav-all{display:block;width:100%;margin-top:10px;background:#708670;color:#fffdf6;border-color:#708670}
+.home-room-nav-all:hover{background:#546f55}
+.home-room-nav button:focus-visible{outline:2px solid #627f6d;outline-offset:2px}
+.home-camera-tools button[aria-expanded="true"]{background:#e6ebdd;color:#435846}
+@media(max-width:700px){
+ .home-room-nav{right:50%;bottom:85px;transform:translateX(50%);max-height:calc(100svh - 167px);width:min(366px,calc(100vw - 24px));padding:14px}
+ .home-room-nav-grid{gap:7px}
+ .home-room-nav-grid button{min-height:40px}
+}
+@media(prefers-reduced-motion:reduce){
+ .home-room-nav-grid button,.home-room-nav-all{transition:none}
+}

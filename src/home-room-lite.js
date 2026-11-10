@@ -1,12 +1,13 @@
-import { HOME_PLAN, HOME_ROOMS } from './home-layout.js';
+import { HOME_PLAN, HOME_ROOMS, HOME_FOCUS } from './home-layout.js';
 
 /** 浏览器无法创建 WebGL 时，使用同一户型数据绘制可缩放的等轴测轻量模型。 */
 export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => {} }) {
   const ctx=canvas.getContext('2d',{alpha:true});
   if(!ctx)throw new Error('当前浏览器无法绘制我的家，请换用新版浏览器。');
   let width=1,height=1,scale=1,zoom=1,raf=0,disposed=false,paused=false,fullWalls=false;
-  let drag=null;
+  let drag=null, isTop=false, highlighted=null;
   function p(x,y,z) {
+    if (isTop) return {x:width*.51+(x+.57)*scale,y:height*.50+(z-.05)*scale-y*scale*.025};
     return {x:width*.51+(x-z)*scale,y:height*.50+(x+z)*scale*.44-y*scale*.85};
   }
   function polygon(points,fill,stroke,line=1) {
@@ -38,6 +39,7 @@ export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => 
     isoBox(-2.55,.33,-1.38,2.02,.47,2.16,'#fff3de');
     isoBox(-2.55,.56,-2.39,2.10,.46,.16,'#b58f76');
     isoBox(-2.55,.65,-.87,1.92,.05,.78,'#d8bba9');
+    isoBox(-2.52,2.22,-2.70,.88,.29,.22,'#F4F6F2');
     isoBox(-3.06,1.1,1.78,2.0,2.1,.50,'#dcc4a0');
     isoBox(-1.30,1.04,1.78,.95,1.98,.48,'#d4b48e');
     // 次卧的小床、写字桌、电子琴和书柜。
@@ -65,6 +67,7 @@ export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => 
     isoBox(-1.74,.49,3.56,.61,.85,.53,'#fcfaf3');
     isoBox(-1.38,.29,2.74,.48,.39,.51,'#f9fbf6');
     isoBox(-.56,.50,3.42,.51,.77,.43,'#eeeadd');
+    isoBox(-.09,1.55,3.48,.04,.59,.51,'#BBD9D9');
     segment(-1.96,2.65,-1.96,2.65,2.09,'#9fbdc0');
     // 阳台晾衣杆和外机。
     isoBox(-3.48,.39,-3.53,.66,.49,.43,'#dbdcd8');
@@ -84,7 +87,7 @@ export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => 
     const w=canvas.parentElement.clientWidth||800,h=canvas.parentElement.clientHeight||630;
     if(width!==w||height!==h){width=w;height=h;canvas.width=Math.floor(w*ratio);canvas.height=Math.floor(h*ratio);}
     ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);
-    scale=Math.min(w/13.3,h/10.5)*zoom;
+    scale=Math.min(w/(isTop?9.7:13.3),h/(isTop?9.8:10.5))*zoom;
     // 真实轮廓：左上阳台，右上次卧，下方独立卫浴、过道、厨房。
     for(const key of HOME_ROOMS){
       const r=HOME_PLAN[key];
@@ -116,6 +119,12 @@ export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => 
     segment(1.05,2.25,3.15,2.25,wallHeight,'#e7e2d5');
     segment(1.05,4.05,3.15,4.05,wallHeight,'#e7e2d5');
     furniture();
+    if (highlighted && HOME_FOCUS[highlighted]) {
+      const spot=HOME_FOCUS[highlighted], r=HOME_PLAN[spot.room];
+      polygon([p(r.x1,.09,r.z1),p(r.x2,.09,r.z1),p(r.x2,.09,r.z2),p(r.x1,.09,r.z2)],
+        'rgba(218,159,96,.14)','#BF7850',Math.max(2,scale*.045));
+      if (highlighted==='loft') textLabel('夹层开口',.53,2.46);
+    }
     // 重要出入口依照手绘位置画成青绿色。
     for(const [x1,z1,x2,z2] of [[-.86,-2.9,-.07,-2.9],[0,-1.06,0,-.28],[0,1.33,0,2.12],[.36,-.45,1.13,-.45],[0,2.9,0,3.7],[1.05,2.91,1.05,3.7],[.07,4.05,.97,4.05]]){
       const a=p(x1,.08,z1),b=p(x2,.08,z2);
@@ -140,8 +149,12 @@ export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => 
   canvas.addEventListener('pointerup',up);
   draw();onReady();
   return {
-    resetView(){zoom=1;schedule();},
-    topView(){zoom=1.05;schedule();},
+    resetView(){zoom=1;isTop=false;highlighted=null;schedule();},
+    topView(){zoom=1;isTop=true;schedule();},
+    focusRoom(key) {
+      if (!HOME_FOCUS[key]) return false;
+      highlighted=key;isTop=true;zoom=1;schedule();return true;
+    },
     toggleWalls(){fullWalls=!fullWalls;schedule();return !fullWalls;},
     setPaused(next){paused=!!next;if(paused){cancelAnimationFrame(raf);raf=0;}else schedule();},
     dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);}

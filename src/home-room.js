@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { HOME_PLAN, HOME_ROOMS, roomAt } from './home-layout.js';
+import { HOME_PLAN, HOME_ROOMS, HOME_FOCUS } from './home-layout.js';
 
 /**
  * 我的家 · 约 50㎡ 的手绘户型 Three.js 剖面模型。
@@ -58,6 +58,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   let cutaway = true;
   let animationFrame = 0;
   let activeUntil = 0;
+  let cameraTween = null;
   let moved = false;
   let startX = 0, startY = 0;
   const meshResources = new Set();
@@ -233,7 +234,10 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   doorZ(1.05,2.91,.79,'厨房门',-1);
   wallZ(1.05,3.70,4.05,2.56,{cut:true});
   wallX(2.25,1.05,3.15,2.56,{cut:true});
-  wallX(4.05,1.05,3.15,2.56,{cut:true});
+  // 厨房靠外侧的窗，按手绘图下方「窗户」位置在外墙保留真正的开口。
+  wallX(4.05,1.05,1.56,2.56,{cut:true});
+  windowX(4.05,1.56,2.52);
+  wallX(4.05,2.52,3.15,2.56,{cut:true});
   doorX(4.05,.07,.9,'入户主门',1);
   wallX(4.05,0,.07,2.56);
 
@@ -251,6 +255,13 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   }
   bed(-2.56,-1.35,2.05,2.16,'#D8B59D','主卧双人床，床头靠北、上方有空调');
   bed(2.28,-1.60,1.24,1.63,'#ACC5B0','儿子的床，靠近次卧南侧和书柜');
+  // 主卧床头上方的室内空调：靠北墙安装，独立于阳台的室外机。
+  const masterAC = group('主卧空调', '安装于床头上方的壁挂式室内机');
+  cube(masterAC, .88, .29, .22, -2.52, 2.22, -2.70, '#F6F6F0');
+  cube(masterAC, .80, .055, .232, -2.52, 2.10, -2.70, '#D2DAD5');
+  for(let i = 0; i < 9; i++) {
+    cube(masterAC, .056, .012, .02, -2.85 + i*.083, 2.095, -2.565, '#81958E', {cast:false});
+  }
 
   function wardrobe(x,z,w=1.2,h=1.95,d=.54,name='衣柜') {
     const g=group(name,'衣物收纳柜');
@@ -389,6 +400,10 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   cube(bath,.025,2.0,.025,-1.96,1.13,2.60,'#A1BAB8',{metal:true});
   rounded(bath,.12,.12,.045,-1.96,2.08,2.60,'#E6E9E5',{segments:24});
   cube(bath,.028,.95,.71,-1.22,.55,2.44,'#BAD5D2',{transparent:true,opacity:.43});
+  const mirror = group('卫生间镜子','洗手池上方的镜面和边框');
+  cube(mirror,.038,.60,.54,-.095,1.55,3.47,'#D5E6E6',{metal:true,roughness:.23});
+  cube(mirror,.047,.035,.60,-.087,1.87,3.47,'#C0AE8F');
+  cube(mirror,.047,.035,.60,-.087,1.23,3.47,'#C0AE8F');
 
   // 门口引体向上架及上方镂空储物空间。
   // 储物夹层由两侧板、顶板和朝入户门的后挡板围成，面向架子的口完全敞开。
@@ -417,6 +432,24 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
       wall.position.y=h/2+.07;
     }
     kick(300);
+  }
+  // 观察特定房间，而不是通过鼠标一点点寻找；保留原始模型与房间状态。
+  function moveCamera(position, nextTarget, zoom = 1) {
+    cameraTween = {
+      fromPosition: camera.position.clone(), fromTarget: controls.target.clone(), fromZoom: camera.zoom,
+      position, target: nextTarget, zoom, start: performance.now(), duration: 800
+    };
+    kick(1100);
+  }
+  function focusRoom(key) {
+    const spot = HOME_FOCUS[key];
+    if (!spot) return false;
+    const nextTarget = new THREE.Vector3(spot.x, spot.y, spot.z);
+    const offset = key === 'loft'
+      ? new THREE.Vector3(4.7, 5.5, 6.0)
+      : new THREE.Vector3(8.2, 8.3, 9.2);
+    moveCamera(nextTarget.clone().add(offset), nextTarget, spot.zoom);
+    return true;
   }
   function activate(group) {
     const door=openable.find(item=>item.group===group);
@@ -454,6 +487,16 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     animationFrame=0;
     if(disposed||paused)return;
     let animating=false;
+    if (cameraTween) {
+      const elapsed = Math.min(1, (now - cameraTween.start) / cameraTween.duration);
+      const ease = elapsed * elapsed * (3 - 2 * elapsed);
+      camera.position.copy(cameraTween.fromPosition).lerp(cameraTween.position, ease);
+      controls.target.copy(cameraTween.fromTarget).lerp(cameraTween.target, ease);
+      camera.zoom = cameraTween.fromZoom + (cameraTween.zoom - cameraTween.fromZoom) * ease;
+      camera.updateProjectionMatrix();
+      if (elapsed >= 1) cameraTween = null;
+      else animating = true;
+    }
     for(const door of openable) {
       const delta=door.goal-door.leaf.rotation.y;
       if(Math.abs(delta)>.008) {
@@ -483,6 +526,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   const observer=new ResizeObserver(resize);
   observer.observe(canvas.parentElement);
   controls.addEventListener('change',()=>kick(260));
+  controls.addEventListener('start',()=>{cameraTween=null;});
   canvas.addEventListener('pointerdown',pointerDown);
   canvas.addEventListener('pointermove',pointerMove);
   canvas.addEventListener('pointerup',pointerUp);
@@ -493,10 +537,11 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   updateCutaway();
   onReady();
   return {
-    resetView(){camera.position.copy(initial);controls.target.copy(target);controls.update();kick(850);},
-    topView(){camera.position.set(target.x+.03,17.1,target.z+.03);controls.target.copy(target);controls.update();kick(850);},
+    resetView(){moveCamera(initial.clone(),target.clone(),1);},
+    topView(){moveCamera(new THREE.Vector3(target.x+.03,17.1,target.z+.03),target.clone(),1);},
+    focusRoom,
     toggleWalls(){cutaway=!cutaway;updateCutaway();return cutaway;},
-    setPaused(next){paused=Boolean(next);if(paused){cancelAnimationFrame(animationFrame);animationFrame=0;}else{resize();kick(600);}},
+    setPaused(next){paused=Boolean(next);if(paused){cancelAnimationFrame(animationFrame);animationFrame=0;cameraTween=null;}else{resize();kick(600);}},
     dispose(){
       if(disposed)return;
       disposed=true;cancelAnimationFrame(animationFrame);
