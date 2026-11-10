@@ -22,7 +22,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   const background = new THREE.Group();
   scene.add(background);
   const camera = new THREE.OrthographicCamera(-9, 9, 6, -6, 0.1, 100);
-  const target = new THREE.Vector3(-0.57, 0.35, 0.12);
+  const target = new THREE.Vector3(-0.57, 0.54, 0.12);
   const initial = new THREE.Vector3(10.8, 10.9, 12.8);
   camera.position.copy(initial);
   const controls = new OrbitControls(camera, canvas);
@@ -473,7 +473,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     if(disposed)return;
     const parent=canvas.parentElement;
     const w=Math.max(parent?.clientWidth||0,100),h=Math.max(parent?.clientHeight||0,240);
-    const aspect=w/h, halfHeight=Math.max(4.6,5.4/aspect);
+    const aspect=w/h, halfHeight=Math.max(4.95,5.45/aspect);
     camera.left=-halfHeight*aspect;camera.right=halfHeight*aspect;
     camera.top=halfHeight;camera.bottom=-halfHeight;
     camera.updateProjectionMatrix();
