@@ -88,7 +88,9 @@ try {
     await page.waitForTimeout(700);
     const nextFrame=Number(await homeCanvas.getAttribute('data-render-frames'));
     assert.ok(nextFrame-firstFrame<8,'Idle scene keeps rendering: '+(nextFrame-firstFrame)+' frames/700ms');
-    passed('batched draw calls '+drawCalls+' and idle animation loop sleeps ('+(nextFrame-firstFrame)+' frames/700ms)');
+    const batchedPieces=Number(await homeCanvas.getAttribute('data-batched-pieces'));
+    assert.ok(batchedPieces>=100,'Not enough static furniture got instanced: '+batchedPieces);
+    passed('batched draw calls '+drawCalls+', instanced static pieces '+batchedPieces+' and idle animation loop sleeps ('+(nextFrame-firstFrame)+' frames/700ms)');
   }
   await page.locator('[data-home-tool="top"]').click();
   await page.locator('[data-home-tool="walls"]').click();

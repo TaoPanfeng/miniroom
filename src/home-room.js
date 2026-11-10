@@ -533,45 +533,53 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   }
   // 观察特定房间，而不是通过鼠标一点点寻找；保留原始模型与房间状态。
   /**
-   * 每个父组按颜色批量合并相同立方体为 InstancedMesh。
-   * 保留门叶的父节点，开合动画与点击命中不受影响；可变高度墙不参与。
+   * 静态立方体按 shading 参数分类，颜色交给 InstancedMesh.instanceColor。
+   * 不同房间即使不同颜色也能 1 个 draw call 绘制一组。
+   * 门叶等运动节点不合批；每个 instanceId 对应原家具节点，点击仍可追溯。
    */
   let batchedPieces=0, batchCount=0;
   function batchStaticBoxes(root) {
-    // 跨房间按材质全局合并静态方块；门板等运动节点必须排除。
-    // 保留每个实例对应的原物品组，raycast 的 instanceId 仍可点击家具。
     const buckets=new Map();
     root.updateMatrixWorld(true);
     const invRoot=root.matrixWorld.clone().invert();
     root.traverse(node=>{
       if(!node.isMesh||node.geometry!==sharedBox||node.userData.mutableWall
          ||node.material.transparent)return;
-      let owner=null, parent=node.parent, dynamic=false;
+      let owner=null,parent=node.parent,dynamic=false;
       while(parent&&parent!==root){
         if(parent.userData.dynamic){dynamic=true;break;}
         if(!owner&&parent.userData.homeInfo)owner=parent;
         parent=parent.parent;
       }
       if(dynamic)return;
-      const list=buckets.get(node.material)||[];
+      const key=[node.material.metalness,node.material.roughness,node.material.side].join('|');
+      const list=buckets.get(key)||[];
       list.push({node,owner});
-      buckets.set(node.material,list);
+      buckets.set(key,list);
     });
-    for(const [mat,list] of buckets) {
+    for(const list of buckets.values()){
       if(list.length<2)continue;
+      const originalMaterial=list[0].node.material;
+      const batchMaterial=new THREE.MeshStandardMaterial({
+        color:'#ffffff',metalness:originalMaterial.metalness,
+        roughness:originalMaterial.roughness,side:originalMaterial.side
+      });
+      customMaterials.add(batchMaterial);
       const matrices=list.map(({node})=>{
         node.updateWorldMatrix(true,false);
         return new THREE.Matrix4().multiplyMatrices(invRoot,node.matrixWorld);
       });
-      const inst=new THREE.InstancedMesh(sharedBox,mat,list.length);
-      inst.name='batched-house-pieces';
+      const inst=new THREE.InstancedMesh(sharedBox,batchMaterial,list.length);
+      inst.name='batched-colored-house-pieces';
       inst.castShadow=false;inst.receiveShadow=false;inst.frustumCulled=false;
       inst.userData.instanceOwners=list.map(item=>item.owner);
       for(let i=0;i<list.length;i++){
         inst.setMatrixAt(i,matrices[i]);
+        inst.setColorAt(i,list[i].node.material.color);
         list[i].node.parent.remove(list[i].node);
       }
       inst.instanceMatrix.needsUpdate=true;
+      if(inst.instanceColor)inst.instanceColor.needsUpdate=true;
       root.add(inst);
       batchCount++;
       batchedPieces+=list.length;
