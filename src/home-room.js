@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { HOME_PLAN, HOME_ROOMS, HOME_FOCUS } from './home-layout.js';
+import { HOME_STOPS, canWalk } from './home-navigation.js';
 
 /**
  * 我的家 · 约 50㎡ 的手绘户型 Three.js 剖面模型。
@@ -12,13 +13,16 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.03;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // 一个室内静态模型无需逐物体实时阴影图：关闭阴影 pass，改用材料明暗与地面柔光。
+  renderer.shadowMap.enabled = false;
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,
+    window.matchMedia('(pointer:coarse)').matches ? 1 : 1.25));
   const scene = new THREE.Scene();
   const model = new THREE.Group();
   scene.add(model);
+  const roof = new THREE.Group();
+  scene.add(roof);
   const background = new THREE.Group();
   scene.add(background);
   const camera = new THREE.OrthographicCamera(-9, 9, 6, -6, 0.1, 100);
@@ -39,18 +43,30 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   controls.rotateSpeed = 0.7;
   controls.zoomSpeed = 0.7;
   controls.update();
+  // 俯视/全屋与站在屋内使用不同相机，但共用一个 Three.js renderer。
+  const eyeCamera=new THREE.PerspectiveCamera(70,1,.045,65);
+  const eye={...HOME_STOPS.entrance,y:1.62};
+  let viewMode='inside',insideCutaway=false;
+  const walkKeys=new Set();
+  let eyePointerId=null,lastPointerX=0,lastPointerY=0,lastFrameAt=0,renderCount=0;
+  function updateEyeCamera() {
+    eyeCamera.position.set(eye.x,eye.y,eye.z);
+    const c=Math.cos(eye.pitch);
+    eyeCamera.lookAt(eye.x+Math.sin(eye.yaw)*c,
+      eye.y+Math.sin(eye.pitch),
+      eye.z-Math.cos(eye.yaw)*c);
+  }
+  updateEyeCamera();
+  controls.enabled=false;
+  canvas.dataset.cameraMode=viewMode;
+  canvas.dataset.entrance='true';
 
   scene.add(new THREE.AmbientLight('#ffffff', .95));
   const hemi = new THREE.HemisphereLight('#f7f1de', '#8eaa95', 1.25);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight('#fff4dd', 2.5);
   sun.position.set(-5, 12, 10);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
-  sun.shadow.camera.top = 12; sun.shadow.camera.bottom = -12;
-  sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 40;
-  sun.shadow.normalBias = 0.03;
+  sun.castShadow = false;
   scene.add(sun);
 
   let disposed = false;
@@ -62,6 +78,9 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   let moved = false;
   let startX = 0, startY = 0;
   const meshResources = new Set();
+  // 几百个家具方块共用一个单位立方体，静态对象稍后按材质批量实例化。
+  const sharedBox = new THREE.BoxGeometry(1, 1, 1);
+  meshResources.add(sharedBox);
   const usedMaterials = new Map();
   const customMaterials = new Set();
   const openable = [];
@@ -81,9 +100,8 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     return usedMaterials.get(id);
   }
   function cube(parent, w, h, d, x, y, z, color, opts = {}) {
-    const geometry = new THREE.BoxGeometry(w, h, d);
-    meshResources.add(geometry);
-    const mesh = new THREE.Mesh(geometry, material(color, opts));
+    const mesh = new THREE.Mesh(sharedBox, material(color, opts));
+    mesh.scale.set(w, h, d);
     mesh.position.set(x, y, z);
     mesh.castShadow = opts.cast !== false && !opts.transparent;
     mesh.receiveShadow = opts.receive !== false;
@@ -148,14 +166,14 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   function wallX(z, x1, x2, height=2.58, opts={}) {
     const h = opts.cut ? .48 : height;
     const wall = cube(model, x2-x1,h,.105,(x1+x2)/2,h/2+.07,z,opts.color || '#F3F0E6');
-    if(opts.cut) cuttable.push({ wall, full:height, low:h });
+    if(opts.cut) { wall.userData.mutableWall = true; cuttable.push({ wall, full:height, low:h }); }
     if(!opts.cut && height>1.75) cube(model,x2-x1,.045,.13,(x1+x2)/2,.13,z,'#BDAA8A',{cast:false});
     return wall;
   }
   function wallZ(x,z1,z2,height=2.58,opts={}) {
     const h=opts.cut?.48:height;
     const wall=cube(model,.105,h,z2-z1,x,h/2+.07,(z1+z2)/2,opts.color || '#F1EEE4');
-    if(opts.cut) cuttable.push({ wall,full:height,low:h });
+    if(opts.cut) { wall.userData.mutableWall = true; cuttable.push({ wall,full:height,low:h }); }
     return wall;
   }
   // 窗口在实体墙中真正留空，下方窗台+上方窗楣+玻璃。
@@ -210,12 +228,14 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   wallX(-2.90,-4.30,-3.42);windowX(-2.90,-3.42,-2.69);
   wallX(-2.90,-2.69,-1.96);windowX(-2.90,-1.96,-1.21);
   wallX(-2.90,-1.21,-.86);doorX(-2.90,-.86,.79,'通往阳台',1);
+  // 手绘图中主卧下边缘与卫生间隔开，原版漏了一段墙，现补全。
   wallX(2.25,-4.30,-2.15,2.59,{cut:true});
+  wallX(2.25,-2.15,0,2.59,{cut:true});
 
   // 主卧 / 次卧 / 客厅：两个独立房门。
-  wallZ(0,-2.90,-1.06,2.57,{color:'#DED8CA'});
-  doorZ(0,-1.06,.78,'主卧与次卧之间',1);
-  wallZ(0,-.28,1.33,2.57,{cut:true});
+  // 主卧与次卧之间是完整的隔墙；次卧只能通过客厅门进入。
+  wallZ(0,-2.90,-.45,2.57,{color:'#DED8CA'});
+  wallZ(0,-.45,1.33,2.57,{cut:true});
   doorZ(0,1.33,.79,'主卧与客厅之间',-1);
   wallZ(0,2.12,2.25,2.55);
   wallX(-2.90,0,1.25);windowX(-2.90,1.25,2.35);wallX(-2.90,2.35,3.15);
@@ -405,6 +425,15 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   cube(mirror,.047,.035,.60,-.087,1.87,3.47,'#C0AE8F');
   cube(mirror,.047,.035,.60,-.087,1.23,3.47,'#C0AE8F');
 
+  // 每间房都有独立顶板，拼成完整封顶；俯视时可以暂时隐藏。
+  // 夹层另有自己的顶板和敞口，不与整屋屋顶混淆。
+  for (const key of HOME_ROOMS) {
+    const r = HOME_PLAN[key];
+    cube(roof, r.x2-r.x1-.025, .12, r.z2-r.z1-.025,
+      (r.x1+r.x2)/2, 2.76, (r.z1+r.z2)/2, '#F0EDE3',
+      {cast:false, receive:false});
+  }
+
   // 门口引体向上架及上方镂空储物空间。
   // 储物夹层由两侧板、顶板和朝入户门的后挡板围成，面向架子的口完全敞开。
   const pull=group('引体向上架 / 夹层储物口','从主门延伸过来的高处储物夹层；引体向上时头顶正对敞开的抽屉式开口');
@@ -427,16 +456,120 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   rounded(light,.38,.42,.09,1.48,2.43,.87,'#F8DEAB',{segments:32});
   ball(light,.14,1.48,2.34,.87,'#FFEBC0');
 
+  function switchView(next) {
+    if (next !== 'inside' && next !== 'overview') return;
+    viewMode=next;
+    cameraTween=null;
+    walkKeys.clear();
+    controls.enabled=next==='overview';
+    insideCutaway=false;
+    roof.visible=next==='inside';
+    canvas.dataset.cameraMode=next;
+    canvas.dataset.roofVisible=String(roof.visible);
+    updateCutaway();
+    kick(450);
+  }
+  function visitRoom(key) {
+    const stop=HOME_STOPS[key];
+    if(!stop)return false;
+    switchView('inside');
+    Object.assign(eye,{x:stop.x,y:1.62,z:stop.z,yaw:stop.yaw,pitch:stop.pitch});
+    updateEyeCamera();
+    canvas.dataset.position=eye.x.toFixed(2)+','+eye.z.toFixed(2);
+    canvas.dataset.entrance=String(key==='entrance');
+    kick(400);
+    return true;
+  }
+  function setWalkKey(code,pressed) {
+    if(!['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(code))return;
+    if(pressed)walkKeys.add(code);else walkKeys.delete(code);
+    kick(160);
+  }
+  function keyDown(event) {
+    if(disposed||paused||viewMode!=='inside'||document.body.dataset.room!=='home'||document.querySelector('dialog[open]'))return;
+    if(event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.code)){
+      event.preventDefault();
+      setWalkKey(event.code,true);
+    }
+  }
+  function keyUp(event){setWalkKey(event.code,false);}
+  function keyBlur(){walkKeys.clear();}
+  function moveEye(dt) {
+    const forward=Number(walkKeys.has('KeyW')||walkKeys.has('ArrowUp'))
+      -Number(walkKeys.has('KeyS')||walkKeys.has('ArrowDown'));
+    const right=Number(walkKeys.has('KeyD')||walkKeys.has('ArrowRight'))
+      -Number(walkKeys.has('KeyA')||walkKeys.has('ArrowLeft'));
+    if(!forward&&!right)return false;
+    const unit=Math.hypot(forward,right);
+    const speed=Math.min(dt,.045)*1.55/unit;
+    const dx=(Math.sin(eye.yaw)*forward+Math.cos(eye.yaw)*right)*speed;
+    const dz=(-Math.cos(eye.yaw)*forward+Math.sin(eye.yaw)*right)*speed;
+    const oldX=eye.x,oldZ=eye.z;
+    // 分轴碰撞测试，靠墙时可以顺墙滑动；不穿隔墙/大件家具。
+    if(canWalk(eye.x,eye.z,eye.x+dx,eye.z+dz)){eye.x+=dx;eye.z+=dz;}
+    else {
+      if(canWalk(eye.x,eye.z,eye.x+dx,eye.z))eye.x+=dx;
+      if(canWalk(eye.x,eye.z,eye.x,eye.z+dz))eye.z+=dz;
+    }
+    if(eye.x!==oldX||eye.z!==oldZ){
+      updateEyeCamera();
+      canvas.dataset.position=eye.x.toFixed(2)+','+eye.z.toFixed(2);
+    }
+    return true;
+  }
+
   function updateCutaway() {
-    for(const {wall,full,low} of cuttable) {
-      const h=cutaway?low:full;
-      // create cube geometry retains original low height: scale along y to requested length.
-      wall.scale.y=h/low;
+    for (const {wall,full,low} of cuttable) {
+      const h = viewMode === 'inside'
+        ? (insideCutaway ? low : full)
+        : (cutaway ? low : full);
+      // sharedBox is a 1m cube, so its scale is the actual height.
+      wall.scale.y=h;
       wall.position.y=h/2+.07;
     }
     kick(300);
   }
   // 观察特定房间，而不是通过鼠标一点点寻找；保留原始模型与房间状态。
+  /**
+   * 每个父组按颜色批量合并相同立方体为 InstancedMesh。
+   * 保留门叶的父节点，开合动画与点击命中不受影响；可变高度墙不参与。
+   */
+  let batchedPieces=0, batchCount=0;
+  function batchStaticBoxes(root) {
+    // 先收集节点再替换子对象：切勿在 Three.js traverse() 迭代时改 children。
+    const parents=[];
+    root.traverse(node=>{if(node.isGroup)parents.push(node);});
+    for(const parent of parents){
+      const buckets=new Map();
+      for(const child of parent.children) {
+        if (!child.isMesh || child.geometry !== sharedBox || child.userData.mutableWall
+          || child.material.transparent) continue;
+        const list=buckets.get(child.material) || [];
+        list.push(child);buckets.set(child.material,list);
+      }
+      for (const [mat, list] of buckets) {
+        if (list.length < 3) continue;
+        const inst=new THREE.InstancedMesh(sharedBox,mat,list.length);
+        inst.name='batched-furniture';
+        inst.castShadow=false; inst.receiveShadow=false;
+        for(let i=0;i<list.length;i++) {
+          list[i].updateMatrix();
+          inst.setMatrixAt(i,list[i].matrix);
+          parent.remove(list[i]);
+        }
+        inst.instanceMatrix.needsUpdate=true;
+        inst.frustumCulled=false;
+        parent.add(inst);
+        batchCount++;
+        batchedPieces+=list.length;
+      }
+    }
+  }
+  batchStaticBoxes(model);
+  batchStaticBoxes(roof);
+  batchStaticBoxes(background);
+
   function moveCamera(position, nextTarget, zoom = 1) {
     cameraTween = {
       fromPosition: camera.position.clone(), fromTarget: controls.target.clone(), fromZoom: camera.zoom,
@@ -463,33 +596,67 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     onPick(group.userData.homeInfo || '我的家');
   }
   function pointerDown(event) {
-    moved=false;startX=event.clientX;startY=event.clientY;kick(850);
+    moved=false;startX=event.clientX;startY=event.clientY;
+    if(viewMode==='inside' && eyePointerId===null
+        && (event.button===0||event.pointerType==='touch')){
+      eyePointerId=event.pointerId;
+      lastPointerX=event.clientX;lastPointerY=event.clientY;
+      try{canvas.setPointerCapture(event.pointerId);}catch{}
+    }
+    kick(280);
   }
   function pointerMove(event) {
-    if(Math.hypot(event.clientX-startX,event.clientY-startY)>6)moved=true;
-    kick(500);
+    // 悬停不应该启动渲染循环，只有按住拖动才需要重新绘制。
+    if(viewMode==='inside'&&event.pointerId!==eyePointerId)return;
+    if(viewMode==='overview'&&!event.buttons)return;
+    if(viewMode==='inside'&&event.pointerId===eyePointerId){
+      const dx=event.clientX-lastPointerX,dy=event.clientY-lastPointerY;
+      lastPointerX=event.clientX;lastPointerY=event.clientY;
+      if(Math.hypot(event.clientX-startX,event.clientY-startY)>6)moved=true;
+      if(moved){
+        eye.yaw-=dx*.0033;
+        eye.pitch=Math.max(-1.16,Math.min(1.16,eye.pitch-dy*.0028));
+        updateEyeCamera();
+      }
+    } else if (Math.hypot(event.clientX-startX,event.clientY-startY)>6) moved=true;
+    kick(160);
   }
   function pointerUp(event) {
+    if(event.pointerId===eyePointerId){
+      eyePointerId=null;
+      if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+    }
     if(moved || event.button!==0)return;
     const rect=canvas.getBoundingClientRect();
     if(!rect.width||!rect.height)return;
-    mouse.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
-    raycaster.setFromCamera(mouse,camera);
+    mouse.set(((event.clientX-rect.left)/rect.width)*2-1,
+      -((event.clientY-rect.top)/rect.height)*2+1);
+    raycaster.setFromCamera(mouse,viewMode==='inside'?eyeCamera:camera);
     for(const hit of raycaster.intersectObjects(model.children,true)) {
       let node=hit.object;
       while(node && node!==model && !node.userData.homeInfo)node=node.parent;
       if(node?.userData?.homeInfo){activate(node);break;}
     }
   }
+  function pointerCancel(event){
+    if(event.pointerId===eyePointerId)eyePointerId=null;
+  }
   function render() {
     if(disposed||paused)return;
-    controls.update();
-    renderer.render(scene,camera);
+    if(viewMode==='overview')controls.update();
+    renderer.render(scene,viewMode==='inside'?eyeCamera:camera);
+    renderCount++;
+    canvas.dataset.renderFrames=String(renderCount);
+    canvas.dataset.drawCalls=String(renderer.info.render.calls);
+    canvas.dataset.batchedPieces=String(batchedPieces);
+    canvas.dataset.batchCount=String(batchCount);
   }
   function tick(now) {
     animationFrame=0;
     if(disposed||paused)return;
-    let animating=false;
+    const dt=lastFrameAt?Math.min((now-lastFrameAt)/1000,.05):0;
+    lastFrameAt=now;
+    let animating=viewMode==='inside'&&walkKeys.size>0&&moveEye(dt);
     if (cameraTween) {
       const elapsed = Math.min(1, (now - cameraTween.start) / cameraTween.duration);
       const ease = elapsed * elapsed * (3 - 2 * elapsed);
@@ -523,28 +690,60 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     camera.left=-halfHeight*aspect;camera.right=halfHeight*aspect;
     camera.top=halfHeight;camera.bottom=-halfHeight;
     camera.updateProjectionMatrix();
+    eyeCamera.aspect=aspect;
+    eyeCamera.updateProjectionMatrix();
     renderer.setSize(w,h,false);
     kick(300);
   }
   const observer=new ResizeObserver(resize);
   observer.observe(canvas.parentElement);
-  controls.addEventListener('change',()=>kick(260));
+  controls.addEventListener('change',()=>{if(viewMode==='overview')kick(260);});
   controls.addEventListener('start',()=>{cameraTween=null;});
   canvas.addEventListener('pointerdown',pointerDown);
   canvas.addEventListener('pointermove',pointerMove);
   canvas.addEventListener('pointerup',pointerUp);
-  canvas.addEventListener('wheel',()=>kick(600),{passive:true});
+  canvas.addEventListener('pointercancel',pointerCancel);
+  canvas.addEventListener('wheel',()=>kick(400),{passive:true});
+  window.addEventListener('keydown',keyDown);
+  window.addEventListener('keyup',keyUp);
+  window.addEventListener('blur',keyBlur);
   document.addEventListener('visibilitychange',visibility);
-  function visibility(){if(!document.hidden)kick(300);}
+  function visibility(){if(document.hidden)walkKeys.clear();else{lastFrameAt=0;kick(300);}}
   resize();
   updateCutaway();
+  canvas.dataset.roofVisible='true';
+  canvas.dataset.position=eye.x.toFixed(2)+','+eye.z.toFixed(2);
+  kick(400);
   onReady();
   return {
-    resetView(){moveCamera(initial.clone(),target.clone(),1);},
-    topView(){moveCamera(new THREE.Vector3(target.x+.03,17.1,target.z+.03),target.clone(),1);},
-    focusRoom,
-    toggleWalls(){cutaway=!cutaway;updateCutaway();return cutaway;},
-    setPaused(next){paused=Boolean(next);if(paused){cancelAnimationFrame(animationFrame);animationFrame=0;cameraTween=null;}else{resize();kick(600);}},
+    // 默认从主门进入；全屋鸟瞰另设入口，不让鸟瞰视角冒充人眼视角。
+    resetView(){visitRoom('entrance');},
+    showWhole(){
+      switchView('overview');
+      moveCamera(initial.clone(),target.clone(),1);
+    },
+    topView(){
+      switchView('overview');
+      moveCamera(new THREE.Vector3(target.x+.03,17.1,target.z+.03),target.clone(),1);
+    },
+    visitRoom,focusRoom:visitRoom,
+    getMode(){return viewMode;},
+    roofVisible(){return roof.visible;},
+    toggleRoof(){roof.visible=!roof.visible;canvas.dataset.roofVisible=String(roof.visible);kick(300);return roof.visible;},
+    toggleWalls(){
+      if(viewMode==='inside'){insideCutaway=!insideCutaway;}
+      else cutaway=!cutaway;
+      updateCutaway();
+      return viewMode==='inside'?!insideCutaway:cutaway;
+    },
+    setWalkKey,
+    setPaused(next){
+      paused=Boolean(next);
+      if(paused){
+        walkKeys.clear();eyePointerId=null;lastFrameAt=0;
+        cancelAnimationFrame(animationFrame);animationFrame=0;cameraTween=null;
+      }else{resize();kick(450);}
+    },
     dispose(){
       if(disposed)return;
       disposed=true;cancelAnimationFrame(animationFrame);
@@ -552,8 +751,12 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
       canvas.removeEventListener('pointerdown',pointerDown);
       canvas.removeEventListener('pointermove',pointerMove);
       canvas.removeEventListener('pointerup',pointerUp);
+      canvas.removeEventListener('pointercancel',pointerCancel);
+      window.removeEventListener('keydown',keyDown);
+      window.removeEventListener('keyup',keyUp);
+      window.removeEventListener('blur',keyBlur);
       document.removeEventListener('visibilitychange',visibility);
-      model.clear();background.clear();scene.clear();
+      model.clear();roof.clear();background.clear();scene.clear();
       for(const geo of meshResources)geo.dispose();
       for(const mat of usedMaterials.values())mat.dispose();
       for(const mat of customMaterials)mat.dispose();

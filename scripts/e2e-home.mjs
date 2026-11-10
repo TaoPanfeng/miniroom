@@ -46,6 +46,40 @@ try {
   assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在我的家');
   assert.equal(await page.locator('[data-room-choice]').count(),3);
   passed('home is the default; only the centered home is visible');
+  const homeCanvas=page.locator('.home-canvas');
+  const sceneMode=await homeCanvas.getAttribute('data-camera-mode');
+  if(sceneMode==='inside'){
+    assert.equal(await homeCanvas.getAttribute('data-roof-visible'),'true','Indoor mode must have a sealed roof');
+    const initialPosition=await homeCanvas.getAttribute('data-position');
+    assert.ok(initialPosition?.startsWith('0.53,3.83'),'Default perspective must begin at entrance: '+initialPosition);
+    await page.keyboard.down('w');
+    await page.waitForTimeout(450);
+    await page.keyboard.up('w');
+    const walked=await homeCanvas.getAttribute('data-position');
+    assert.notEqual(walked,initialPosition,'W should move the viewer inside the corridor');
+    await page.locator('[data-home-tool="reset"]').click();
+    assert.equal(await homeCanvas.getAttribute('data-position'),initialPosition,'Entrance reset must restore the same coordinates');
+    await page.locator('[data-home-tool="roof"]').click();
+    assert.equal(await homeCanvas.getAttribute('data-roof-visible'),'false','Roof toggle should hide ceiling');
+    await page.locator('[data-home-tool="roof"]').click();
+    assert.equal(await homeCanvas.getAttribute('data-roof-visible'),'true','Roof toggle should restore ceiling');
+    passed('true entrance-eye perspective, roof presence and visibility, walk controls and reset');
+  } else {
+    assert.equal(await page.locator('.home-compat').isVisible(),true,'Expected Canvas fallback if WebGL unavailable');
+    passed('CI graphics uses fallback; independent forced-WebGL-off checks below');
+  }
+  await page.locator('[data-home-tool="whole"]').click();
+  if(sceneMode==='inside'){
+    await page.waitForTimeout(1350);
+    const drawCalls=Number(await homeCanvas.getAttribute('data-draw-calls'));
+    assert.ok(Number.isFinite(drawCalls)&&drawCalls>0&&drawCalls<270,
+      'Draw calls remain unexpectedly high after batching: '+drawCalls);
+    const firstFrame=Number(await homeCanvas.getAttribute('data-render-frames'));
+    await page.waitForTimeout(700);
+    const nextFrame=Number(await homeCanvas.getAttribute('data-render-frames'));
+    assert.ok(nextFrame-firstFrame<8,'Idle scene keeps rendering: '+(nextFrame-firstFrame)+' frames/700ms');
+    passed('batched draw calls '+drawCalls+' and idle animation loop sleeps ('+(nextFrame-firstFrame)+' frames/700ms)');
+  }
   await page.locator('[data-home-tool="top"]').click();
   await page.locator('[data-home-tool="walls"]').click();
   assert.equal(await page.locator('[data-home-tool="walls"]').getAttribute('aria-pressed'),'true');
@@ -76,6 +110,18 @@ try {
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('.home-room-nav').isVisible(),false);
   passed('8 room inspection targets including pull-up loft, focus reset and Escape close');
+  if(sceneMode==='inside'){
+    await page.locator('[data-home-tool="rooms"]').click();
+    await page.locator('[data-home-focus="bathroom"]').click();
+    assert.equal(await homeCanvas.getAttribute('data-camera-mode'),'inside');
+    assert.equal(await homeCanvas.getAttribute('data-roof-visible'),'true');
+    await page.screenshot({path:new URL('home-inside-bathroom.png',output).pathname});
+    await page.locator('[data-home-tool="rooms"]').click();
+    await page.locator('[data-home-focus="living"]').click();
+    await page.screenshot({path:new URL('home-inside-living.png',output).pathname});
+    await page.locator('[data-home-tool="reset"]').click();
+    passed('living room and bathroom have actual eye-height interior standing positions');
+  }
 
   await enter('study');
   await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
@@ -128,6 +174,7 @@ try {
   const sizes=await page.evaluate(()=>({width:document.documentElement.scrollWidth,viewport:window.innerWidth}));
   assert.ok(sizes.width<=sizes.viewport+3,'Horizontal overflow on mobile: '+JSON.stringify(sizes));
   assert.ok(await page.locator('[data-home-tool="reset"]').isVisible(),'Home controls missing on mobile');
+  if(sceneMode==='inside')assert.ok(await page.locator('[data-home-move="KeyW"]').isVisible(),'Touch movement pad missing');
   passed('390px mobile viewport fits and keeps controls available');
   await page.locator('[data-home-tool="rooms"]').click();
   assert.ok(await page.locator('.home-room-nav').isVisible(),'Room navigation invisible on mobile');

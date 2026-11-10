@@ -82,3 +82,33 @@ body[data-room="home"] .room-switch-button{background:#fffdf7;box-shadow:0 2px 1
 @media(prefers-reduced-motion:reduce){
  .home-room-nav-grid button,.home-room-nav-all{transition:none}
 }
+
+
+/* 室内漫游：只增加底部小型方向键，保留整个模型画布。 */
+.home-view-status{font-weight:650;color:#4d6d58}
+.home-walk-pad{position:absolute;left:clamp(13px,3vw,48px);bottom:21px;z-index:4;
+  width:132px;display:grid;justify-items:center;gap:4px;
+  -webkit-user-select:none;user-select:none;touch-action:none}
+.home-walk-pad>div{display:flex;gap:4px}
+.home-walk-pad button{display:grid;place-items:center;width:38px;height:32px;
+  border:1px solid #d8ded1;border-radius:8px;background:#fffdf8d4;
+  color:#718a77;font-size:18px;font-family:system-ui,sans-serif;line-height:1;
+  box-shadow:0 3px 11px #64706112;touch-action:none}
+.home-walk-pad button:active{background:#9db69f;color:white}
+.home-walk-pad[hidden]{display:none!important}
+.home-camera-tools{z-index:4}
+.home-camera-tools button{flex:0 0 auto}
+.home-room-nav{z-index:6}
+@media(max-width:700px){
+  .home-camera-tools{gap:5px;padding:4px}
+  .home-camera-tools button{width:43px;height:41px}
+  .home-walk-pad{left:12px;bottom:101px;gap:3px;width:114px}
+  .home-walk-pad button{width:35px;height:31px;font-size:16px}
+  .home-hint{bottom:80px;max-width:96vw;white-space:normal;text-align:center;font-size:9px;line-height:1.5}
+  .home-room-nav{bottom:95px}
+}
+@media(max-width:370px){
+  .home-camera-tools{gap:3px}
+  .home-camera-tools button{width:40px;height:40px}
+  .home-walk-pad{left:9px}
+}

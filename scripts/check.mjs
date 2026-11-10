@@ -78,3 +78,17 @@ for (const [key, spot] of Object.entries(HOME_FOCUS)) {
 if (Object.keys(HOME_FOCUS).length !== 8) errors.push('Expected 7 room focuses and 1 loft focus');
 if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}
 else console.log('Home layout verified: '+HOME_ROOMS.length+' rooms, ~'+totalArea.toFixed(1)+' m²; 3 room choices.');
+
+
+// P0：室内行走应从主门开始，站位不能落在柜子/床体或其他房间。
+const { HOME_STOPS, HOME_PASSAGES, canStand, canWalk } = await import('../src/home-navigation.js');
+for(const [key,stop] of Object.entries(HOME_STOPS)){
+  if(roomAt(stop.x,stop.z)!==stop.room)errors.push('Wrong room for standing point: '+key);
+  if(!canStand(stop.x,stop.z))errors.push('Standing point hits furniture/wall: '+key);
+}
+if (HOME_STOPS.entrance.room!=='passage') errors.push('Default entrance must be in corridor');
+if(HOME_PASSAGES.some(p=>!HOME_PLAN[p.from]||!HOME_PLAN[p.to])) errors.push('Unrecognized passage endpoint');
+if(canWalk(-1.1,-.78,1.14,-.78))errors.push('Direct walk through master/child wall must be forbidden');
+if(canWalk(-.5,2.22,-.5,2.31))errors.push('Direct walk from master into bathroom through wall must be forbidden');
+if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}
+else console.log('Indoor navigation checked: '+Object.keys(HOME_STOPS).length+' standing points, '+HOME_PASSAGES.length+' valid door passages.');
