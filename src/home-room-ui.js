@@ -103,7 +103,7 @@ export function createHomeView({ container, notify = () => {} }) {
     }
     if(!room) { showInfo('房屋还没有加载完成。'); return; }
     if(name==='reset') {room.resetView();resetFocus();}
-    if(name==='top')room.topView();
+    if(name==='top'){room.topView();resetFocus();}
     if(name==='walls') {
       const cutaway=room.toggleWalls();
       $('[data-home-tool="walls"]').setAttribute('aria-pressed',String(!cutaway));
@@ -122,7 +122,9 @@ export function createHomeView({ container, notify = () => {} }) {
       focusButtons.forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
       showInfo(mode==='2d'
         ? HOME_FOCUS[key].label+'：已在俯视示意中标出位置'
-        : '正在查看 '+HOME_FOCUS[key].label+' · 房间尺寸仍为估算');
+        : key==='loft'
+          ? '夹层从引体架一侧敞口、顶板保留；尺寸及承重需实测'
+          : '正在查看 '+HOME_FOCUS[key].label+' · 房间尺寸仍为估算');
     },{signal:events.signal});
   }
   container.addEventListener('pointerdown',event=>{

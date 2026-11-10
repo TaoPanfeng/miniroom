@@ -415,6 +415,9 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   }
   cube(pull,1.09,.09,1.60,.525,2.69,3.25,'#D4B78E');
   cube(pull,1.09,.20,.075,.525,2.53,4.03,'#BD9B72');
+  // 储物口朝引体架的一面（z 较小的一端）：只强调上沿及两侧，不加封底。
+  cube(pull,.84,.035,.04,.525,2.62,2.44,'#A6825F',{cast:false});
+  for(const x of [.135,.915])cube(pull,.035,.34,.04,x,2.45,2.44,'#B99268',{cast:false});
   cube(pull,.92,.045,.07,.525,2.13,2.39,'#394C4B',{metal:true});
   for(const x of [.22,.82])cube(pull,.10,.10,.21,x,2.12,2.40,'#6F8380',{metal:true});
   // 夹层只展示前缘开口和上层板，不封死引体架至天花板的开口。
@@ -446,7 +449,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     if (!spot) return false;
     const nextTarget = new THREE.Vector3(spot.x, spot.y, spot.z);
     const offset = key === 'loft'
-      ? new THREE.Vector3(4.7, 5.5, 6.0)
+      ? new THREE.Vector3(2.1, 1.15, -5.4)
       : new THREE.Vector3(8.2, 8.3, 9.2);
     moveCamera(nextTarget.clone().add(offset), nextTarget, spot.zoom);
     return true;

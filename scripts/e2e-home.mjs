@@ -67,6 +67,8 @@ try {
   assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),'loft');
   await page.waitForTimeout(1050);
   await page.screenshot({path:new URL('home-loft.png',output).pathname});
+  await page.locator('[data-home-tool="top"]').click();
+  assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),null,'Top view must clear stale room focus');
   await page.locator('[data-home-tool="rooms"]').click();
   await page.locator('[data-home-focus="all"]').click();
   assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),null);

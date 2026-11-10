@@ -34,5 +34,5 @@ export const HOME_FOCUS = Object.freeze({
   bathroom: { label: '卫生间', x: -1.12, y: .80, z: 3.22, zoom: 2.0, room: 'bathroom' },
   passage: { label: '入户过道', x: .50, y: .80, z: 3.18, zoom: 2.03, room: 'passage' },
   kitchen: { label: '厨房', x: 2.18, y: .80, z: 3.25, zoom: 1.93, room: 'kitchen' },
-  loft: { label: '引体架与夹层', x: .52, y: 2.15, z: 3.11, zoom: 2.23, room: 'passage' },
+  loft: { label: '引体架与夹层', x: .52, y: 2.17, z: 2.95, zoom: 1.96, room: 'passage' },
 });
