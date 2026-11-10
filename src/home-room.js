@@ -44,7 +44,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   controls.zoomSpeed = 0.7;
   controls.update();
   // 俯视/全屋与站在屋内使用不同相机，但共用一个 Three.js renderer。
-  const eyeCamera=new THREE.PerspectiveCamera(70,1,.045,65);
+  const eyeCamera=new THREE.PerspectiveCamera(79,1,.045,65);
   const eye={...HOME_STOPS.entrance,y:1.62};
   let viewMode='inside',insideCutaway=false;
   const walkKeys=new Set();
@@ -200,7 +200,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     cube(g,.075,2.43,.15,left,1.28,z,'#C7A17C');
     cube(g,.075,2.43,.15,right,1.28,z,'#C7A17C');
     cube(g,width+.12,.12,.17,(left+right)/2,2.52,z,'#C7A17C');
-    const leaf=new THREE.Group(); leaf.position.set(hinge,.08,z);g.add(leaf);
+    const leaf=new THREE.Group(); leaf.position.set(hinge,.08,z);leaf.userData.dynamic=true;g.add(leaf);
     cube(leaf,width-.07,2.10,.055,flip*(width-.07)/2,1.08,0,'#8EA990',{cast:true});
     cube(leaf,width-.25,.12,.063,flip*(width-.07)/2,1.7,.01,'#6F927E');
     ball(leaf,.035,flip*(width-.2),1.03,.061,'#D6AD66');
@@ -213,7 +213,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     cube(g,.15,2.43,.075,x,1.28,top,'#C7A17C');
     cube(g,.15,2.43,.075,x,1.28,end,'#C7A17C');
     cube(g,.17,.12,width+.12,x,2.52,(top+end)/2,'#C7A17C');
-    const leaf=new THREE.Group();leaf.position.set(x,.08,hinge);g.add(leaf);
+    const leaf=new THREE.Group();leaf.position.set(x,.08,hinge);leaf.userData.dynamic=true;g.add(leaf);
     cube(leaf,.055,2.10,width-.07,0,1.08,flip*(width-.07)/2,'#8EA990');
     cube(leaf,.064,.12,width-.25,.01,1.75,flip*(width-.07)/2,'#6F927E');
     ball(leaf,.035,.065,1.06,flip*(width-.19),'#D6AD66');
@@ -538,33 +538,43 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
    */
   let batchedPieces=0, batchCount=0;
   function batchStaticBoxes(root) {
-    // 先收集节点再替换子对象：切勿在 Three.js traverse() 迭代时改 children。
-    const parents=[];
-    root.traverse(node=>{if(node.isGroup)parents.push(node);});
-    for(const parent of parents){
-      const buckets=new Map();
-      for(const child of parent.children) {
-        if (!child.isMesh || child.geometry !== sharedBox || child.userData.mutableWall
-          || child.material.transparent) continue;
-        const list=buckets.get(child.material) || [];
-        list.push(child);buckets.set(child.material,list);
+    // 跨房间按材质全局合并静态方块；门板等运动节点必须排除。
+    // 保留每个实例对应的原物品组，raycast 的 instanceId 仍可点击家具。
+    const buckets=new Map();
+    root.updateMatrixWorld(true);
+    const invRoot=root.matrixWorld.clone().invert();
+    root.traverse(node=>{
+      if(!node.isMesh||node.geometry!==sharedBox||node.userData.mutableWall
+         ||node.material.transparent)return;
+      let owner=null, parent=node.parent, dynamic=false;
+      while(parent&&parent!==root){
+        if(parent.userData.dynamic){dynamic=true;break;}
+        if(!owner&&parent.userData.homeInfo)owner=parent;
+        parent=parent.parent;
       }
-      for (const [mat, list] of buckets) {
-        if (list.length < 3) continue;
-        const inst=new THREE.InstancedMesh(sharedBox,mat,list.length);
-        inst.name='batched-furniture';
-        inst.castShadow=false; inst.receiveShadow=false;
-        for(let i=0;i<list.length;i++) {
-          list[i].updateMatrix();
-          inst.setMatrixAt(i,list[i].matrix);
-          parent.remove(list[i]);
-        }
-        inst.instanceMatrix.needsUpdate=true;
-        inst.frustumCulled=false;
-        parent.add(inst);
-        batchCount++;
-        batchedPieces+=list.length;
+      if(dynamic)return;
+      const list=buckets.get(node.material)||[];
+      list.push({node,owner});
+      buckets.set(node.material,list);
+    });
+    for(const [mat,list] of buckets) {
+      if(list.length<2)continue;
+      const matrices=list.map(({node})=>{
+        node.updateWorldMatrix(true,false);
+        return new THREE.Matrix4().multiplyMatrices(invRoot,node.matrixWorld);
+      });
+      const inst=new THREE.InstancedMesh(sharedBox,mat,list.length);
+      inst.name='batched-house-pieces';
+      inst.castShadow=false;inst.receiveShadow=false;inst.frustumCulled=false;
+      inst.userData.instanceOwners=list.map(item=>item.owner);
+      for(let i=0;i<list.length;i++){
+        inst.setMatrixAt(i,matrices[i]);
+        list[i].node.parent.remove(list[i].node);
       }
+      inst.instanceMatrix.needsUpdate=true;
+      root.add(inst);
+      batchCount++;
+      batchedPieces+=list.length;
     }
   }
   batchStaticBoxes(model);
@@ -634,6 +644,10 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
       -((event.clientY-rect.top)/rect.height)*2+1);
     raycaster.setFromCamera(mouse,viewMode==='inside'?eyeCamera:camera);
     for(const hit of raycaster.intersectObjects(model.children,true)) {
+      // 实例化后仍可以按原始家具组识别点击对象。
+      const instanceOwner=hit.object.isInstancedMesh
+        ? hit.object.userData.instanceOwners?.[hit.instanceId] : null;
+      if(instanceOwner?.userData?.homeInfo){activate(instanceOwner);break;}
       let node=hit.object;
       while(node && node!==model && !node.userData.homeInfo)node=node.parent;
       if(node?.userData?.homeInfo){activate(node);break;}

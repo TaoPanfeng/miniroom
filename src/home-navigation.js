@@ -7,12 +7,12 @@ import { HOME_PLAN, roomAt } from './home-layout.js';
 export const HOME_STOPS = Object.freeze({
   entrance: { label: '主门', room: 'passage', x: .53, z: 3.83, yaw: 0, pitch: .06 },
   passage:  { label: '入户过道', room: 'passage', x: .53, z: 3.23, yaw: 0, pitch: .02 },
-  living:   { label: '客厅', room: 'living', x: .57, z: .48, yaw: 1.55, pitch: 0 },
-  master:   { label: '主卧', room: 'master', x: -1.05, z: .45, yaw: -.62, pitch: 0 },
-  child:    { label: '次卧', room: 'child', x: .82, z: -.78, yaw: 1.05, pitch: 0 },
-  bathroom: { label: '卫生间', room: 'bathroom', x: -1.04, z: 3.85, yaw: 0, pitch: 0 },
-  kitchen:  { label: '厨房', room: 'kitchen', x: 1.51, z: 3.51, yaw: .66, pitch: 0 },
-  balcony:  { label: '阳台', room: 'balcony', x: -1.75, z: -3.34, yaw: Math.PI, pitch: 0 },
+  living:   { label: '客厅', room: 'living', x: .45, z: 1.91, yaw: .72, pitch: -.19 },
+  master:   { label: '主卧', room: 'master', x: -1.05, z: .45, yaw: -.62, pitch: -.18 },
+  child:    { label: '次卧', room: 'child', x: .82, z: -.78, yaw: 1.05, pitch: -.17 },
+  bathroom: { label: '卫生间', room: 'bathroom', x: -1.04, z: 3.85, yaw: -.31, pitch: -.24 },
+  kitchen:  { label: '厨房', room: 'kitchen', x: 1.51, z: 3.51, yaw: .51, pitch: -.19 },
+  balcony:  { label: '阳台', room: 'balcony', x: -1.75, z: -3.34, yaw: Math.PI, pitch: -.16 },
   loft:     { label: '引体架与夹层', room: 'passage', x: .52, z: 2.98, yaw: 0, pitch: .83 },
 });
 
