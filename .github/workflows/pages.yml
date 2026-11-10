@@ -27,6 +27,17 @@ jobs:
           node-version: '22'
       - name: Check JavaScript and offline resources
         run: node scripts/check.mjs
+      - name: Install browser regression runner
+        run: npm install --no-save --no-audit --no-fund playwright-core@1.56.1
+      - name: Check real browser flows
+        run: node scripts/e2e-home.mjs
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniroom-e2e-views
+          path: e2e-output
+          if-no-files-found: ignore
       - name: Package static site
         run: node scripts/package-site.mjs
       - name: Configure Pages
