@@ -11,9 +11,10 @@
   <link rel="stylesheet" href="./assets/room-switcher.css">
   <link rel="stylesheet" href="./assets/gallery.css">
   <link rel="stylesheet" href="./assets/storage-manager.css">
+  <link rel="stylesheet" href="./assets/home-room.css">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
-<body data-mood="day">
+<body data-mood="day" data-room="home">
   <svg class="svg-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
     <symbol id="i-house" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8M12 3v4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
@@ -48,14 +49,14 @@
     <a href="./" class="brand" aria-label="栖间 miniroom 首页"><span class="brand-mark"><svg><use href="#i-house"/></svg></span><strong>栖间<span>miniroom</span></strong></a>
     <div class="topbar-center"><span class="live-dot"></span>一间小屋，一点自己的时间</div>
     <nav class="topbar-actions" aria-label="页面工具">
-      <button id="roomSwitcherBtn" class="room-switch-button" aria-haspopup="dialog" aria-label="切换小屋，当前在书房"><svg><use href="#i-house"/></svg><span>切换小屋</span><small id="currentRoomLabel">书房</small><svg class="room-switch-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+      <button id="roomSwitcherBtn" class="room-switch-button" aria-haspopup="dialog" aria-label="切换小屋，当前在我的家"><svg><use href="#i-house"/></svg><span>切换小屋</span><small id="currentRoomLabel">我的家</small><svg class="room-switch-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
       <button id="storageManagerBtn" class="text-button storage-manager-trigger" aria-haspopup="dialog" aria-label="本机存储管理" title="本机存储管理 · 清理缓存"><svg><use href="#i-storage"/></svg><span>本机存储</span></button>
       <button id="helpBtn" class="text-button" aria-label="使用指南"><svg><use href="#i-help"/></svg><span>使用指南</span></button>
       <button id="settingsBtn" class="text-button" aria-label="小屋设置"><svg><use href="#i-sliders"/></svg><span>小屋设置</span></button>
     </nav>
   </header>
 
-  <main class="workspace" id="studyRoomView">
+  <main class="workspace" id="studyRoomView" hidden>
     <aside class="sidebar" aria-label="小屋氛围与专注">
       <section class="intro">
         <p class="eyebrow"><span></span> A LITTLE SPACE, ALL YOURS</p>
@@ -124,6 +125,7 @@
   </main>
 
   <main id="galleryRoomView" aria-label="照片小屋" hidden></main>
+  <main id="homeRoomView" aria-label="我的家"></main>
 
   <footer class="footer"><span id="saveStatus"><svg><use href="#i-check"/></svg>小屋的记忆，留在本机</span><span>BUILT FOR A SLOWER MOMENT <i>✦</i></span></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -131,9 +133,24 @@
   <dialog id="roomPickerDialog" class="dialog room-picker" aria-labelledby="roomPickerTitle">
     <div class="dialog-top"><span class="dialog-kicker">A DIFFERENT LITTLE WORLD</span><button class="icon-button" data-close aria-label="关闭小屋选择"><svg><use href="#i-close"/></svg></button></div>
     <h2 id="roomPickerTitle">今天，想待在哪一间？</h2>
-    <p class="dialog-intro">一间留给安静，一间收藏喜欢的瞬间。</p>
+    <p class="dialog-intro">真实的家、安静的书房，还有收藏回忆的照片小屋。</p>
     <div class="room-choices">
-      <button class="room-choice" data-room-choice="study" aria-pressed="true">
+      <button class="room-choice" data-room-choice="home" aria-pressed="true">
+        <span class="room-choice-art home-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160">
+          <path d="m18 117 90-53 114 49-95 41Z" fill="#e6cfac"/>
+          <path d="m33 117 3-58 74-39 1 91Z" fill="#cddccf"/>
+          <path d="m110 20 93 34 2 61-95-5Z" fill="#e8e9d9"/>
+          <path d="m49 86 40-23 29 14-40 24Z" fill="#dbc4a2"/>
+          <path d="m133 77 42-25 24 12-43 24Z" fill="#b3cfbc"/>
+          <path d="m145 103 40-22 31 15-40 21Z" fill="#d6d3bd"/>
+          <path d="m48 112 49-29 31 13-50 30Z" fill="#c1a481"/>
+          <path d="M65 114V98m9 11V93m9 8V88" stroke="#785f4a" stroke-width="3"/>
+          <path d="M36 57h68M110 21v90" stroke="#b09c7f" stroke-width="4"/>
+          <path d="m176 90 12 5v22l-12-5Z" fill="#83ac92"/>
+        </svg></span>
+        <span class="room-choice-copy"><strong>我的家</strong><small>约 50㎡ · 真实户型的立体缩影。</small></span><span class="room-choice-status">当前小屋</span>
+      </button>
+      <button class="room-choice" data-room-choice="study" aria-pressed="false">
         <span class="room-choice-art study-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160"><path d="m25 108 91-49 99 50-91 49Z" fill="#cfb18a"/><path d="M25 108V35l91-27v79Z" fill="#acb89e"/><path d="m116 8 99 38v63l-99-22Z" fill="#e5dcc6"/><path d="M153 34v43l36 14V48Z" fill="#bfd4ca"/><path d="m154 56 34 14M171 42v42" stroke="#fcf5de" stroke-width="3"/><path d="m43 98 24-11 41 18-24 13Z" fill="#c48d72"/><path d="M43 98V76l41 17v25M43 76l24-11 41 18v22" fill="#bf816b"/><path d="m53 83 30 13 14-7-30-13Z" fill="#e0b097"/><path d="m132 102 30-16 35 15-30 18Z" fill="#ddc49e"/><path d="M135 103v24m58-25v20m-26-4v25" stroke="#a27d54" stroke-width="4"/><path d="m150 98 18-9 15 7-18 9Z" fill="#7d907b"/><path d="M154 91V78l19 8v13Z" fill="#586b5e"/></svg></span>
         <span class="room-choice-copy"><strong id="studyChoiceName">我的小书房</strong><small>听雨、读书、专注，慢慢来。</small></span><span class="room-choice-status">当前小屋</span>
       </button>
@@ -142,7 +159,7 @@
         <span class="room-choice-copy"><strong>照片小屋</strong><small>照片铺满墙，让回忆动起来。</small></span><span class="room-choice-status">进入小屋</span>
       </button>
     </div>
-    <p class="fine-print">两个小屋独立保存，切换不会改变书房里的笔记、相框或设置。</p>
+    <p class="fine-print">三间小屋互不影响：我的家只展示模型，书房笔记和照片小屋的本机素材保持原样。</p>
   </dialog>
 
   <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">

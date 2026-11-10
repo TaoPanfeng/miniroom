@@ -497,13 +497,20 @@ $('backupInput').addEventListener('change', async event => {
 applyState();
 renderTimer();
 if (timer.deadline && remainingSeconds() === 0) completeTimer();
+let studyInitialized = false;
+function ensureStudyStarted() {
+  if (studyInitialized) return;
+  studyInitialized = true;
+  void initializeRoom();
+}
 const roomSwitcher = initRoomSwitcher({
   getStudyName: () => state.roomName,
   notify: toast,
   onRequestStorage: () => storageManager?.open(),
   onChange(current) {
-    room?.setPaused(current === 'gallery');
-    audio.setSuspended(current === 'gallery');
+    room?.setPaused(current !== 'study');
+    audio.setSuspended(current !== 'study');
+    if (current === 'study') ensureStudyStarted();
   },
 });
 
@@ -626,7 +633,7 @@ async function initializeRoom() {
       console.info('Miniroom: WebGL unavailable; using the Canvas lightweight renderer.');
     }
     applyState();
-    room.setPaused(roomSwitcher.current === 'gallery');
+    room.setPaused(roomSwitcher.current !== 'study');
   } catch (error) {
     $('loadingIndicator').hidden = true;
     $('sceneError').hidden = false;
@@ -652,7 +659,7 @@ async function initializeRoom() {
     }
   } finally { if (photoVersion === studyVersion) { setPhotoBusy(false); updatePhotoPreview(); } }
 }
-initializeRoom();
+// 书房按需启动，默认首页「我的家」不预占第二个 WebGL 上下文。
 window.addEventListener('pagehide', event => {
   if (!storageCleanupRunning && !resettingStudy) {
     if ($('booksDialog').open) storeNotes(false);

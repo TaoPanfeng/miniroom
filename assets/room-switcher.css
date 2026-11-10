@@ -8,3 +8,19 @@ body[data-room=gallery]{--paper:#f6f3eb;--surface:#fffdf6;--ink:#3e4939;--muted:
 @media(prefers-reduced-motion:reduce){.room-choice,.room-switch-button{transition:none}}
 @media(max-width:360px){.topbar .brand strong span{display:none}.topbar .brand strong{font-size:20px}.topbar-actions{gap:9px}}
 @media(max-width:440px){.topbar .brand strong span{display:none}.topbar-actions{gap:8px}}
+
+/* 3 个入口：宽屏并排，手机改为紧凑横排卡片。 */
+.room-picker{width:min(850px,calc(100vw - 30px))}
+.room-choices{grid-template-columns:repeat(3,minmax(0,1fr))}
+.home-choice-art{background:#e7ede3}
+@media(max-width:700px){
+ .room-picker{width:calc(100vw - 22px)}
+ .room-choices{grid-template-columns:1fr;gap:9px}
+ .room-choice{display:grid;grid-template-columns:112px minmax(0,1fr);grid-template-rows:auto auto;min-height:100px}
+ .room-choice-art{grid-row:1/3;grid-column:1;padding:0 5px}
+ .room-choice-art svg{height:100px!important}
+ .room-choice-copy{grid-column:2;grid-row:1;padding:12px 12px 3px}
+ .room-choice-copy strong{font-size:16px}
+ .room-choice-status{grid-column:2;grid-row:2;margin:0 12px 8px}
+}
+@media(max-width:400px){.room-choice{grid-template-columns:92px minmax(0,1fr)}.room-choice-art svg{height:95px!important}}

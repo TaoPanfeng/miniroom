@@ -1,0 +1,47 @@
+/* 第三间小屋：只留房子本身，设置与侧边栏只属于原书房。 */
+body[data-room="home"]{--paper:#f7f5ef;--surface:#fffcf5;--ink:#334337;--line:#e2e5d9;background:#f7f5ef}
+body[data-room="home"] .topbar{height:72px;border-bottom-color:#e6e7dc;max-width:1600px;margin:0 auto;padding:0 clamp(17px,3vw,40px)}
+body[data-room="home"] .topbar-center,
+body[data-room="home"] #helpBtn,
+body[data-room="home"] #settingsBtn,
+body[data-room="home"] #storageManagerBtn,
+body[data-room="home"] .footer{display:none!important}
+body[data-room="home"] .topbar .brand strong{font-size:23px}
+body[data-room="home"] .room-switch-button{background:#fffdf7;box-shadow:0 2px 12px #4a59420b}
+.home-room-view{width:100%;min-height:calc(100svh - 73px);overflow:hidden}
+.home-scene-shell{height:calc(100svh - 73px);min-height:430px;position:relative;isolation:isolate;display:flex;align-items:stretch;justify-content:center;background:
+ radial-gradient(ellipse at 49% 68%,#e8e7d9 0%,#f7f5ed 56%,#fcfaf6 100%)}
+.home-canvas-wrap{position:absolute;inset:0;min-height:430px}
+.home-canvas{height:100%;width:100%;display:block;touch-action:none;cursor:grab}
+.home-canvas:active{cursor:grabbing}
+.home-canvas:focus-visible{outline:2px solid #8c9e8c;outline-offset:-5px}
+.home-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#71816e;pointer-events:none;font-size:13px;letter-spacing:1px;background:#f7f5efa8}
+.home-loading-house{display:grid;place-items:center;width:60px;height:60px;border-radius:20px;background:#e7ece0;font:50px/1 Georgia,serif;color:#829b86}
+.home-error{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:20px;color:#62755e;background:#f8f6ef}
+.home-error strong{font-size:18px}.home-error p{font-size:12px;max-width:360px}
+.home-error button{background:#73836d;border-radius:12px;color:#fff;padding:10px 20px}
+.home-camera-tools{position:absolute;right:clamp(13px,3vw,48px);bottom:28px;display:flex;gap:8px;padding:5px;border-radius:15px;background:#fffdf8d9;border:1px solid #dfe3d4;box-shadow:0 9px 24px #6a79651a;backdrop-filter:blur(12px)}
+.home-camera-tools button{width:39px;height:39px;display:grid;place-items:center;border-radius:10px;color:#6e816e;transition:background .18s,color .18s}
+.home-camera-tools button:hover,.home-camera-tools button[aria-pressed="true"]{background:#e6ebdd;color:#435846}
+.home-camera-tools svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.home-tip{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);background:#3d514ae8;color:#fffdf8;border-radius:12px;box-shadow:0 8px 25px #0002;font-size:12px;text-align:center;padding:12px 18px;max-width:min(92vw,440px);pointer-events:none;z-index:2}
+.home-compat{position:absolute;top:18px;left:22px;color:#879487;background:#fff9;border:1px solid #e4e7d8;border-radius:14px;padding:6px 12px;font-size:11px}
+.home-hint{position:absolute;left:clamp(14px,3vw,48px);bottom:37px;color:#9aab98;font-size:11px;letter-spacing:.3px;pointer-events:none;white-space:nowrap}
+.home-hint span{margin:0 5px}
+.home-meter-note{position:absolute;left:clamp(14px,3vw,48px);top:24px;pointer-events:none;font-size:11px;letter-spacing:1.5px;color:#899987}
+.home-room-view[hidden]{display:none!important}
+@media(max-width:700px){
+ body[data-room="home"] .topbar{height:62px;padding:0 14px}
+ body[data-room="home"] .topbar .brand strong{font-size:19px}
+ body[data-room="home"] .topbar .brand strong span{font-size:15px}
+ .home-room-view{min-height:calc(100svh - 63px)}
+ .home-scene-shell{height:calc(100svh - 63px);min-height:440px}
+ .home-hint{left:50%;transform:translateX(-50%);bottom:82px;font-size:10px}
+ .home-camera-tools{bottom:19px;right:50%;transform:translateX(50%)}
+ .home-camera-tools button{width:44px;height:42px}
+ .home-meter-note{left:16px;top:19px;font-size:10px}
+ .home-compat{top:41px;left:16px}
+ .home-tip{bottom:137px;font-size:11px}
+}
+@media(max-width:380px){body[data-room="home"] .topbar .brand strong span{display:none}}
+@media(prefers-reduced-motion:reduce){.home-camera-tools button{transition:none}}
