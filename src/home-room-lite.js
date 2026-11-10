@@ -96,25 +96,25 @@ export function createHomeRoomLite({ canvas, onPick = () => {}, onReady = () => 
         }
       }
     }
-    const h=fullWalls?2.35:.70;
+    const wallHeight=fullWalls?2.35:.70;
     segment(-4.3,-3.9,-4.3,2.25,2.45,'#ced5c6');
     segment(-4.3,-3.9,0,-3.9,.9,'#e1d2ae');
     segment(-4.3,-2.9,0,-2.9,2.35,'#e7e5d8');
     segment(0,-2.9,3.15,-2.9,2.35,'#e8e8db');
-    segment(3.15,-2.9,3.15,4.05,h,'#eee7d9');
-    segment(-4.3,2.25,-2.15,2.25,h,'#f1eada');
-    segment(-2.15,2.25,-2.15,4.05,h,'#f1eada');
-    segment(-2.15,4.05,0,4.05,h,'#efebe2');
+    segment(3.15,-2.9,3.15,4.05,wallHeight,'#eee7d9');
+    segment(-4.3,2.25,-2.15,2.25,wallHeight,'#f1eada');
+    segment(-2.15,2.25,-2.15,4.05,wallHeight,'#f1eada');
+    segment(-2.15,4.05,0,4.05,wallHeight,'#efebe2');
     segment(0,-2.90,0,-1.06,2.15,'#e0dbcc');
-    segment(0,-.28,0,1.33,h,'#e0dbcc');
+    segment(0,-.28,0,1.33,wallHeight,'#e0dbcc');
     segment(0,-.45,.36,-.45,1.65,'#e0dbcc');
-    segment(1.13,-.45,3.15,-.45,h,'#e0dbcc');
+    segment(1.13,-.45,3.15,-.45,wallHeight,'#e0dbcc');
     segment(0,2.25,0,2.9,1.75,'#e7e2d5');
     segment(0,3.70,0,4.05,1.75,'#e7e2d5');
-    segment(1.05,2.25,1.05,2.9,h,'#e7e2d5');
-    segment(1.05,3.70,1.05,4.05,h,'#e7e2d5');
-    segment(1.05,2.25,3.15,2.25,h,'#e7e2d5');
-    segment(1.05,4.05,3.15,4.05,h,'#e7e2d5');
+    segment(1.05,2.25,1.05,2.9,wallHeight,'#e7e2d5');
+    segment(1.05,3.70,1.05,4.05,wallHeight,'#e7e2d5');
+    segment(1.05,2.25,3.15,2.25,wallHeight,'#e7e2d5');
+    segment(1.05,4.05,3.15,4.05,wallHeight,'#e7e2d5');
     furniture();
     // 重要出入口依照手绘位置画成青绿色。
     for(const [x1,z1,x2,z2] of [[-.86,-2.9,-.07,-2.9],[0,-1.06,0,-.28],[0,1.33,0,2.12],[.36,-.45,1.13,-.45],[0,2.9,0,3.7],[1.05,2.91,1.05,3.7],[.07,4.05,.97,4.05]]){
