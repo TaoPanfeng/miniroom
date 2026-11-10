@@ -52,6 +52,7 @@ try {
   await page.locator('[data-home-tool="walls"]').click();
   assert.equal(await page.locator('[data-home-tool="walls"]').getAttribute('aria-pressed'),'false');
   await page.locator('[data-home-tool="reset"]').click();
+  await page.locator('.home-tip').waitFor({state:'hidden',timeout:7000});
   await page.screenshot({path:new URL('home-desktop.png',output).pathname});
   passed('home camera tools and cutaway toggle');
 

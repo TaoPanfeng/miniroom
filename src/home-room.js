@@ -11,7 +11,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = 1.03;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x000000, 0);
@@ -40,10 +40,10 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
   controls.zoomSpeed = 0.7;
   controls.update();
 
-  scene.add(new THREE.AmbientLight('#ffffff', 1.3));
-  const hemi = new THREE.HemisphereLight('#f7f1de', '#8eaa95', 1.65);
+  scene.add(new THREE.AmbientLight('#ffffff', .95));
+  const hemi = new THREE.HemisphereLight('#f7f1de', '#8eaa95', 1.25);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight('#fff4dd', 2.75);
+  const sun = new THREE.DirectionalLight('#fff4dd', 2.5);
   sun.position.set(-5, 12, 10);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -473,7 +473,7 @@ export function createHomeRoom({ canvas, onPick = () => {}, onReady = () => {} }
     if(disposed)return;
     const parent=canvas.parentElement;
     const w=Math.max(parent?.clientWidth||0,100),h=Math.max(parent?.clientHeight||0,240);
-    const aspect=w/h, halfHeight=Math.max(5.7,6.35/aspect);
+    const aspect=w/h, halfHeight=Math.max(4.6,5.4/aspect);
     camera.left=-halfHeight*aspect;camera.right=halfHeight*aspect;
     camera.top=halfHeight;camera.bottom=-halfHeight;
     camera.updateProjectionMatrix();
