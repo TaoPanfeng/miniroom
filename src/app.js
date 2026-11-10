@@ -1,3 +1,4 @@
+import { DEFAULT_PHOTO_URL } from './default-photo.js';
 import { DEFAULTS, loadState, saveState, loadPhoto, savePhoto, validateBackup, getStudyRevision } from './storage.js';
 import { RoomAudio } from './audio.js';
 import { initRoomSwitcher } from './room-switcher.js';
@@ -322,10 +323,9 @@ const timerInterval = setInterval(() => {
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !resettingStudy) { if (timer.deadline && remainingSeconds() === 0) completeTimer(); else renderTimer(); } });
 
 function updatePhotoPreview() {
-  $('photoPreview').hidden = !photoData;
-  $('photoPlaceholder').hidden = Boolean(photoData);
-  if (photoData) $('photoPreview').src = photoData;
-  else $('photoPreview').removeAttribute('src');
+  $('photoPreview').hidden = false;
+  $('photoPreview').src = photoData || DEFAULT_PHOTO_URL;
+  $('photoPreview').alt = photoData ? '保存在本机的相框照片' : '默认哆啦A梦图片';
   $('removePhotoBtn').disabled = photoBusy || !photoData;
 }
 // 照片、存档共用操作锁，避免较慢的照片读取覆盖后发起的导入操作。
@@ -391,7 +391,7 @@ $('removePhotoBtn').addEventListener('click', async () => {
   try {
     const expectedRevision = await getStudyRevision();
     assertStudyVersion(version);
-    if (!await confirmChange('本浏览器保存的相框照片会移除，恢复为默认山景。电脑上的原始照片不会改变。', '恢复默认画作？')) return;
+    if (!await confirmChange('本浏览器保存的相框照片会移除，恢复为默认哆啦A梦图片。电脑上的原始照片不会改变。', '恢复默认画作？')) return;
     assertStudyVersion(version);
     await room?.setPhoto(null);
     assertStudyVersion(version);
@@ -401,7 +401,7 @@ $('removePhotoBtn').addEventListener('click', async () => {
     photoData = null;
     photoStorageAvailable = true;
     updatePhotoPreview();
-    toast('相框换回了温柔的山景。');
+    toast('相框已恢复默认哆啦A梦图片。');
   } catch (error) { if (!isStaleStudy(version, error)) toast(error.message || '照片暂时无法移除。'); }
   finally { if (version === studyVersion) setPhotoBusy(false); }
 });

@@ -1,3 +1,4 @@
+import { DEFAULT_PHOTO_URL } from './default-photo.js';
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { RoundedBoxGeometry } from '../vendor/RoundedBoxGeometry.js';
@@ -420,6 +421,18 @@ export function createRoom({ canvas, onSelect = () => {}, onHover = () => {}, on
     ctx.fillStyle = '#687f6d'; ctx.beginPath(); ctx.moveTo(0, h * .88); ctx.lineTo(w * .32, h * .64); ctx.lineTo(w * .72, h * .77); ctx.lineTo(w, h * .58); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill();
     ctx.fillStyle = '#50665c'; ctx.beginPath(); ctx.moveTo(0, h * .95); ctx.lineTo(w * .57, h * .88); ctx.lineTo(w, h * .96); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill();
   });
+  // 默认画作来自项目静态资源，用户更换的照片仍优先显示在相框中。
+  const defaultArt = new Image();
+  defaultArt.onload = () => {
+    if (disposed) return;
+    const surface = artTexture.image;
+    const context = surface.getContext('2d');
+    const scale = Math.max(surface.width / defaultArt.naturalWidth, surface.height / defaultArt.naturalHeight);
+    const dw = defaultArt.naturalWidth * scale, dh = defaultArt.naturalHeight * scale;
+    context.drawImage(defaultArt, (surface.width - dw) / 2, (surface.height - dh) / 2, dw, dh);
+    artTexture.needsUpdate = true;
+  };
+  defaultArt.src = DEFAULT_PHOTO_URL;
   const photoMaterial = new THREE.MeshBasicMaterial({ map: artTexture });
   const photoGeo = new THREE.PlaneGeometry(.79, 1.01); geometryCache.set('photo', photoGeo);
   const photo = new THREE.Mesh(photoGeo, photoMaterial); photo.position.z = .055; frameGroup.add(photo);

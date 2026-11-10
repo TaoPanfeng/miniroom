@@ -1,3 +1,4 @@
+import { DEFAULT_PHOTO_URL } from './default-photo.js';
 /** 无 WebGL 时使用的本地 Canvas 2D 小屋；与三维场景保持相同的交互接口。 */
 export function createRoomLite({ canvas, onSelect = () => {}, onHover = () => {}, onReady = () => {} }) {
   const ctx = canvas.getContext('2d', { alpha: true });
@@ -20,6 +21,16 @@ export function createRoomLite({ canvas, onSelect = () => {}, onHover = () => {}
   ]) {
     artCtx.fillStyle = color; artCtx.beginPath(); points.forEach(([x,y], i) => i ? artCtx.lineTo(x,y) : artCtx.moveTo(x,y)); artCtx.closePath(); artCtx.fill();
   }
+  // Canvas 轻量模式与 WebGL 模式共用默认画作，不写入浏览器存档。
+  const defaultArt = new Image();
+  defaultArt.onload = () => {
+    if (disposed) return;
+    const s = Math.max(art.width / defaultArt.naturalWidth, art.height / defaultArt.naturalHeight);
+    const dw = defaultArt.naturalWidth * s, dh = defaultArt.naturalHeight * s;
+    artCtx.drawImage(defaultArt, (art.width - dw) / 2, (art.height - dh) / 2, dw, dh);
+    schedule();
+  };
+  defaultArt.src = DEFAULT_PHOTO_URL;
   const palette = { wood: '#cfac7d', woodDark: '#9c754e', cream: '#f1e6ce', sage: '#acbaa3', green: '#688164', ink: '#39473d', white: '#fbf4e5' };
   const bookColors = ['#78917b', '#d8bd89', '#b9765f', '#e2d5b7', '#52666b', '#aab992', '#ca9f70'];
   const objectNames = { lamp: '台灯', books: '书架', plant: '绿植', photo: '相框', laptop: '电脑', cat: '小猫', window: '窗户' };
