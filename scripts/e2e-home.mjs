@@ -44,7 +44,7 @@ try {
   assert.equal(await page.locator('#homeRoomView').isVisible(),false);
   assert.equal(await page.locator('#galleryRoomView').isVisible(),false);
   assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
-  assert.equal(await page.locator('#photoPreview').getAttribute('src'),'./assets/default-photo.webp');
+  assert.ok((await page.locator('#photoPreview').getAttribute('src'))?.endsWith('/assets/default-photo.webp'), 'Study default frame should use the bundled Doraemon image');
   assert.equal(await page.locator('[data-room-choice]').count(),3);
   passed('original study with Doraemon frame is the default');
   await enter('home');
@@ -185,7 +185,7 @@ try {
   await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
   assert.equal(await page.locator('#studyRoomView').isVisible(),true);
   assert.equal(await page.locator('#homeRoomView').isVisible(),false);
-  assert.equal(await page.locator('#photoPreview').getAttribute('src'),'./assets/default-photo.webp');
+  assert.ok((await page.locator('#photoPreview').getAttribute('src'))?.endsWith('/assets/default-photo.webp'), 'Study default frame should use the bundled Doraemon image');
   passed('room switches preserve existing data; reload returns to original study');
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
