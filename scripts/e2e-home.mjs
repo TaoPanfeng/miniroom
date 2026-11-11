@@ -38,14 +38,20 @@ try {
     await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':'galleryRoomView')).waitFor({state:'visible',timeout:18000});
   }
   await page.goto(host,{waitUntil:'domcontentloaded'});
+  await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
+  assert.equal(await page.locator('#sceneError').isVisible(),false,'Original study scene failed');
+  assert.equal(await page.locator('#studyRoomView').isVisible(),true);
+  assert.equal(await page.locator('#homeRoomView').isVisible(),false);
+  assert.equal(await page.locator('#galleryRoomView').isVisible(),false);
+  assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
+  assert.equal(await page.locator('#photoPreview').getAttribute('src'),'./assets/default-photo.webp');
+  assert.equal(await page.locator('[data-room-choice]').count(),3);
+  passed('original study with Doraemon frame is the default');
+  await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
   assert.equal(await page.locator('.home-error').isVisible(),false,'Home model displayed an error');
   assert.equal(await page.locator('#homeRoomView').isVisible(),true);
-  assert.equal(await page.locator('#studyRoomView').isVisible(),false);
-  assert.equal(await page.locator('#galleryRoomView').isVisible(),false);
-  assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在我的家');
-  assert.equal(await page.locator('[data-room-choice]').count(),3);
-  passed('home is the default; only the centered home is visible');
+  passed('separate 3D home still opens on demand');
   const homeCanvas=page.locator('.home-canvas');
   const sceneMode=await homeCanvas.getAttribute('data-camera-mode');
   if(sceneMode==='inside'){
@@ -176,10 +182,13 @@ try {
   await page.locator('#booksDialog [data-close]').click();
   await enter('home');
   await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
+  assert.equal(await page.locator('#studyRoomView').isVisible(),true);
+  assert.equal(await page.locator('#homeRoomView').isVisible(),false);
+  assert.equal(await page.locator('#photoPreview').getAttribute('src'),'./assets/default-photo.webp');
+  passed('room switches preserve existing data; reload returns to original study');
+  await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
-  assert.equal(await page.locator('#homeRoomView').isVisible(),true);
-  assert.equal(await page.locator('#studyRoomView').isVisible(),false);
-  passed('room switches preserve existing study data; reload defaults home');
 
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:new URL('home-mobile.png',output).pathname});
@@ -210,6 +219,10 @@ try {
   const fallbackErrors=[];
   fallbackPage.on('pageerror',error=>fallbackErrors.push(error.message));
   await fallbackPage.goto(host,{waitUntil:'domcontentloaded'});
+  await fallbackPage.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
+  assert.equal(await fallbackPage.locator('#studyRoomView').isVisible(),true);
+  await fallbackPage.locator('#roomSwitcherBtn').click();
+  await fallbackPage.locator('#roomPickerDialog [data-room-choice="home"]').click();
   await fallbackPage.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
   assert.equal(await fallbackPage.locator('.home-error').isVisible(),false,'Canvas fallback failed');
   assert.equal(await fallbackPage.locator('.home-compat').isVisible(),true,'Canvas fallback badge missing');

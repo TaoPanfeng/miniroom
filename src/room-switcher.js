@@ -1,6 +1,6 @@
 import { createHomeView } from './home-room-ui.js';
 
-/** 三间小屋共享切换器。默认进入「我的家」，旧书房和照片墙保持独立。 */
+/** 三间小屋共享切换器。默认进入带图片相框的书房，其他两间保持独立。 */
 export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStorage = () => {} }) {
   const button=document.getElementById('roomSwitcherBtn');
   const picker=document.getElementById('roomPickerDialog');
@@ -8,9 +8,8 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
   const galleryHost=document.getElementById('galleryRoomView');
   const homeHost=document.getElementById('homeRoomView');
   const choices=[...picker.querySelectorAll('[data-room-choice]')];
-  const key='miniroom-current-room-v1';
   const names={home:'我的家',study:'书房',gallery:'照片小屋'};
-  let current='home',gallery=null,switching=false,disposed=false;
+  let current='study',gallery=null,switching=false,disposed=false;
   const home=createHomeView({container:homeHost,notify});
 
   function paint(){
@@ -63,7 +62,6 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       homeHost.hidden=next!=='home';
       paint();
       onChange(current);
-      try{localStorage.setItem(key,current);}catch{/* 切换无需可写存储。 */}
       if(!restore)window.scrollTo({top:0,behavior:'instant'});
       button.focus({preventScroll:true});
       return true;
@@ -90,13 +88,12 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
     return [choice,handler];
   });
 
-  // 明确以「我的家」为每次访问的默认首页；不覆盖旧书房及照片素材。
-  study.hidden=true;
+  // 无论上次切到了哪间房，重新打开都进入原书房。家庭三维场景按需加载。
+  study.hidden=false;
   galleryHost.hidden=true;
-  homeHost.hidden=false;
+  homeHost.hidden=true;
   paint();
   onChange(current);
-  void home.open();
   return {
     get current(){return current;},
     get busy(){return switching||Boolean(gallery?.busy);},
