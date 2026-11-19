@@ -301,7 +301,8 @@ try {
   await enter('study');
   passed('meditation timer stays usable in 390px mobile viewport');
   await enter('dark');
-  await page.locator('.dark-field').click({position:{x:80,y:280}});
+  // 手机面板覆盖屏幕中央；在 x=4 的面板外暗区点击，才是正确的“唤出控件”操作。
+  await page.locator('.dark-field').click({position:{x:4,y:200}});
   const overlayBox=await page.locator('.dark-controls').boundingBox();
   assert.ok(overlayBox&&overlayBox.x>=-1&&overlayBox.x+overlayBox.width<=393,'Dark controls overflow on mobile');
   await page.screenshot({path:new URL('dark-room-mobile-controls.png',output).pathname});
