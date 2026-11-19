@@ -201,6 +201,11 @@ try {
   assert.equal(await darkHaze.evaluate(el=>getComputedStyle(el).animationName),'none');
   assert.equal(await page.locator('.dark-field').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(0, 0, 0)');
   await page.waitForFunction(()=>document.querySelector('.dark-room-view')?.dataset.controls==='hidden',null,{timeout:6000});
+  // 等 CSS 0.55s 淡出真正结束：不仅 data-visible=false，视觉上也必须没有面板。
+  await page.waitForFunction(()=>{
+    const css=getComputedStyle(document.querySelector('.dark-controls'));
+    return css.opacity==='0'&&css.visibility==='hidden';
+  },null,{timeout:2500});
   assert.equal(await page.locator('.dark-controls').getAttribute('data-visible'),'false');
   await page.screenshot({path:new URL('dark-room-black.png',output).pathname});
   await page.locator('.dark-field').click({position:{x:150,y:180}});
@@ -217,6 +222,11 @@ try {
   assert.equal(darkStyle.duration,'12s');
   assert.match(darkStyle.peak,/rgba\(10, 11, 11, \.66\)/);
   await page.waitForFunction(()=>document.querySelector('.dark-room-view')?.dataset.controls==='hidden',null,{timeout:6000});
+  // 等 CSS 0.55s 淡出真正结束：不仅 data-visible=false，视觉上也必须没有面板。
+  await page.waitForFunction(()=>{
+    const css=getComputedStyle(document.querySelector('.dark-controls'));
+    return css.opacity==='0'&&css.visibility==='hidden';
+  },null,{timeout:2500});
   await darkHaze.evaluate(el=>{el.style.animationDelay='-6s';});
   await page.waitForTimeout(110);
   await page.screenshot({path:new URL('dark-room-faint.png',output).pathname});
