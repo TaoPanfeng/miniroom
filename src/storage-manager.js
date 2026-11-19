@@ -13,8 +13,8 @@ const SCOPES = {
   },
   all: {
     title: '全部小屋数据', name: '全部小屋数据',
-    description: '一起清理照片小屋与书房',
-    confirmation: '照片小屋与书房在当前浏览器保存的数据都会清理。书房恢复初始状态，照片墙变为空白。',
+    description: '清理照片、书房及冥想提醒偏好',
+    confirmation: '照片小屋、书房存档和冥想提醒偏好都会清理。冥想计时也会停止。原始照片和视频不会删除。',
     icon: '<path d="m3 10 9-7 9 7v11H3Z"/><path d="M9 21v-8h6v8"/>',
   },
 };
@@ -80,7 +80,7 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
     dialog.setAttribute('aria-describedby', `${id}Intro`);
     dialog.innerHTML = `
       <header class="sm-header"><div><p class="sm-kicker">清理缓存与本地存档</p><h2 id="${id}Title">本机存储管理</h2></div><button type="button" class="sm-close icon-button" aria-label="关闭本机存储管理">${svg('<path d="m6 6 12 12M6 18 18 6"/>')}</button></header>
-      <p id="${id}Intro" class="sm-intro">只管理当前浏览器保存的两间小屋。</p>
+      <p id="${id}Intro" class="sm-intro">管理当前浏览器内的小屋存档，包含冥想计时偏好。</p>
       <div class="sm-overview">
         <div class="sm-total"><div><span>本机数据估算</span><strong class="sm-total-value">正在读取…</strong></div><button type="button" class="sm-refresh secondary-button">${svg('<path d="M20 7a9 9 0 1 0 1 8M20 3v5h-5"/>')}<span>刷新统计</span></button></div>
         <div class="sm-read-errors" role="status" hidden><strong>部分占用暂时无法读取</strong><ul></ul><p>可重试读取，也可继续选择清理范围。</p></div>
@@ -133,7 +133,7 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
   function detailFor(scope) {
     if (reading) return '正在读取…';
     if (!overview || (scope === 'all' ? overview.gallery.error || overview.study.error : overview[scope].error)) return '占用暂时无法读取';
-    if (scope === 'all') return '照片小屋 + 书房数据';
+    if (scope === 'all') return '照片小屋 + 书房 + 冥想偏好';
     const data = overview[scope];
     if (scope === 'gallery') {
       return Number.isInteger(data.count) && Number.isInteger(data.images) && Number.isInteger(data.videos)

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./assets/gallery.css">
   <link rel="stylesheet" href="./assets/storage-manager.css">
   <link rel="stylesheet" href="./assets/home-room.css">
+  <link rel="stylesheet" href="./assets/meditation-room.css">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body data-mood="day" data-room="study">
@@ -126,6 +127,7 @@
 
   <main id="galleryRoomView" aria-label="照片小屋" hidden></main>
   <main id="homeRoomView" aria-label="我的家" hidden></main>
+  <main id="meditationRoomView" aria-label="冥想计时小屋" hidden></main>
 
   <footer class="footer"><span id="saveStatus"><svg><use href="#i-check"/></svg>小屋的记忆，留在本机</span><span>BUILT FOR A SLOWER MOMENT <i>✦</i></span></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -133,7 +135,7 @@
   <dialog id="roomPickerDialog" class="dialog room-picker" aria-labelledby="roomPickerTitle">
     <div class="dialog-top"><span class="dialog-kicker">A DIFFERENT LITTLE WORLD</span><button class="icon-button" data-close aria-label="关闭小屋选择"><svg><use href="#i-close"/></svg></button></div>
     <h2 id="roomPickerTitle">今天，想待在哪一间？</h2>
-    <p class="dialog-intro">真实的家、安静的书房，还有收藏回忆的照片小屋。</p>
+    <p class="dialog-intro">书房、照片、家，还有一间只属于呼吸与时间的冥想小屋。</p>
     <div class="room-choices">
       <button class="room-choice" data-room-choice="home" aria-pressed="false">
         <span class="room-choice-art home-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160">
@@ -158,8 +160,23 @@
         <span class="room-choice-art gallery-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160"><path d="M22 125V20h196v105Z" fill="#e9dfcd"/><path d="M22 125h196l17 29H5Z" fill="#c7aa84"/><path d="M43 42h43v61H43Z" fill="#fff9e8" stroke="#a88660" stroke-width="4"/><path d="M48 47h33v43H48Z" fill="#c5d5c0"/><path d="m48 85 14-21 19 23v3H48Z" fill="#83987a"/><circle cx="72" cy="59" r="6" fill="#e6bd80"/><path d="M105 31h77v49h-77Z" fill="#fff8e7" stroke="#b9906b" stroke-width="4"/><path d="M111 37h65v35h-65Z" fill="#c6d4d0"/><path d="m111 66 17-20 20 18 13-14 15 19v3h-65Z" fill="#899d88"/><path d="M112 94h47v34h-47Z" fill="#8e9d8b" stroke="#faf6e9" stroke-width="5"/><path d="m131 101 12 9-12 9Z" fill="#fff5df"/><path d="M27 133h186" stroke="#a88560" stroke-width="3"/></svg></span>
         <span class="room-choice-copy"><strong>照片小屋</strong><small>照片铺满墙，让回忆动起来。</small></span><span class="room-choice-status">进入小屋</span>
       </button>
+      <button class="room-choice" data-room-choice="meditation" aria-pressed="false">
+        <span class="room-choice-art meditation-choice-art" aria-hidden="true">
+          <svg viewBox="0 0 240 160">
+            <path d="M28 115Q120 44 212 115" fill="none" stroke="#c7dac5" stroke-width="3"/>
+            <circle cx="120" cy="79" r="51" fill="#edf3e6" stroke="#9db99d" stroke-width="2"/>
+            <circle cx="120" cy="79" r="39" fill="none" stroke="#c8d9c5" stroke-width="2"/>
+            <path d="M120 48V80L142 94" fill="none" stroke="#67856f" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="120" cy="79" r="5" fill="#67856f"/>
+            <path d="M72 134Q120 108 168 134" fill="none" stroke="#b2c2ac" stroke-width="4" stroke-linecap="round"/>
+            <path d="M92 141Q120 126 148 141" fill="none" stroke="#d4dfcf" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="room-choice-copy"><strong>冥想计时</strong><small>间隔或 Cron 提醒，轻声告诉你已过多久。</small></span>
+        <span class="room-choice-status">进入小屋</span>
+      </button>
     </div>
-    <p class="fine-print">三间小屋互不影响：我的家只展示模型，书房笔记和照片小屋的本机素材保持原样。</p>
+    <p class="fine-print">四间小屋互不影响：冥想提醒在本浏览器运行，书房与照片素材继续保留。</p>
   </dialog>
 
   <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">

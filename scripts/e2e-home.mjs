@@ -35,7 +35,7 @@ try {
   async function enter(name){
     await page.locator('#roomSwitcherBtn').click();
     await picker.locator('[data-room-choice="'+name+'"]').click();
-    await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':'galleryRoomView')).waitFor({state:'visible',timeout:18000});
+    await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':name==='gallery'?'galleryRoomView':'meditationRoomView')).waitFor({state:'visible',timeout:18000});
   }
   await page.goto(host,{waitUntil:'domcontentloaded'});
   await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
@@ -45,7 +45,7 @@ try {
   assert.equal(await page.locator('#galleryRoomView').isVisible(),false);
   assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
   assert.ok((await page.locator('#photoPreview').getAttribute('src'))?.endsWith('/assets/default-photo.webp'), 'Study default frame should use the bundled Doraemon image');
-  assert.equal(await page.locator('[data-room-choice]').count(),3);
+  assert.equal(await page.locator('[data-room-choice]').count(),4);
   passed('original study with Doraemon frame is the default');
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
@@ -150,6 +150,38 @@ try {
   await page.locator('#saveNotesBtn').click();
   passed('existing study opens and notes can be saved');
 
+  await enter('meditation');
+  assert.equal(await page.locator('#meditationRoomView').isVisible(),true);
+  assert.equal(await page.locator('#studyRoomView').isVisible(),false);
+  assert.equal(await page.locator('.meditation-room canvas').count(),0,'Meditation should not load a 3D renderer');
+  assert.equal(await page.locator('.med-elapsed').textContent(),'00:00:00');
+  assert.equal(await page.locator('[data-med-schedule="interval"]').getAttribute('aria-pressed'),'true');
+  await page.locator('[data-med-schedule="cron"]').click();
+  await page.locator('#medCron').fill('not a cron');
+  assert.equal(await page.locator('.med-cron-validation').getAttribute('data-valid'),'false');
+  await page.locator('#medVoice').uncheck();
+  await page.locator('#medBell').uncheck();
+  await page.locator('#medCron').fill('*/1 * * * * *');
+  assert.equal(await page.locator('.med-cron-validation').getAttribute('data-valid'),'true');
+  await page.locator('[data-med-action="start"]').click();
+  assert.equal(await page.locator('.meditation-room').getAttribute('data-phase'),'running');
+  await page.waitForFunction(()=>Number(document.querySelector('.meditation-room')?.dataset.announcements)>=1,null,{timeout:9000});
+  assert.match(await page.locator('.med-announcement').textContent(),/从冥想开始，已经过了/);
+  await page.locator('[data-med-action="pause"]').click();
+  const paused=await page.locator('.med-elapsed').textContent();
+  await page.waitForTimeout(1250);
+  assert.equal(await page.locator('.med-elapsed').textContent(),paused,'Paused meditation should not advance');
+  await page.locator('[data-med-action="start"]').click();
+  const resuming=await page.locator('.med-elapsed').textContent();
+  await enter('study');
+  await page.waitForTimeout(1120);
+  await enter('meditation');
+  assert.notEqual(await page.locator('.med-elapsed').textContent(),resuming,'Meditation should continue across room switches');
+  await page.locator('[data-med-action="finish"]').click();
+  assert.equal(await page.locator('.meditation-room').getAttribute('data-phase'),'finished');
+  assert.ok((await page.evaluate(()=>localStorage.getItem('miniroom-meditation-preferences-v1')))?.includes('*/1'));
+  passed('meditation room Cron validation, timed announcement, pause/resume, voice text, saved config and cross-room continuity');
+
   await enter('gallery');
   await page.locator('.gw-loading').waitFor({state:'hidden',timeout:18000});
   const testImage = new URL('../assets/default-photo.webp',import.meta.url).pathname;
@@ -187,6 +219,9 @@ try {
   assert.equal(await page.locator('#homeRoomView').isVisible(),false);
   assert.ok((await page.locator('#photoPreview').getAttribute('src'))?.endsWith('/assets/default-photo.webp'), 'Study default frame should use the bundled Doraemon image');
   passed('room switches preserve existing data; reload returns to original study');
+  await enter('meditation');
+  assert.equal(await page.locator('#medCron').inputValue(),'*/1 * * * * *','Meditation preferences should survive reload');
+  assert.equal(await page.locator('[data-med-schedule="cron"]').getAttribute('aria-pressed'),'true');
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
 
@@ -205,6 +240,15 @@ try {
   assert.equal(await page.locator('#homeRoomView').getAttribute('data-focus'),'kitchen');
   await page.locator('[data-home-tool="reset"]').click();
   passed('mobile room navigation fits and focuses correctly');
+  await enter('meditation');
+  const medMobile=await page.evaluate(()=>({
+    width:document.documentElement.scrollWidth,viewport:innerWidth,
+    cron:document.querySelector('#medCron')?.value
+  }));
+  assert.ok(medMobile.width<=medMobile.viewport+3,'Meditation mobile horizontal overflow '+JSON.stringify(medMobile));
+  await page.screenshot({path:new URL('meditation-mobile.png',output).pathname});
+  await enter('study');
+  passed('meditation timer stays usable in 390px mobile viewport');
 
   // 不支持 WebGL 的设备仍能查看户型，并且「俯视」真的切换投影。
   const fallbackContext=await browser.newContext({viewport:{width:1090,height:740}});

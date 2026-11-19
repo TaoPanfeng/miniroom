@@ -586,6 +586,11 @@ storageManager = initStorageManager({
     if (includesStudy) { resettingStudy = true; clearTimeout(noteTimeout); }
     try {
       const result = await clearRoomData(scope);
+      // 「全部小屋」同时清理新增冥想提醒偏好，并停止其正在运行的计时。
+      if(scope==='all'&&result?.cleared?.includes('gallery')&&result?.cleared?.includes('study')){
+        const cleared=await roomSwitcher.clearMeditationSettings();
+        if(!cleared)toast('照片和书房已清理；冥想设置未能删除，请检查浏览器存储权限。',5500);
+      }
       await cleanupRefresh;
       return result;
     } finally {
@@ -659,7 +664,7 @@ async function initializeRoom() {
     }
   } finally { if (photoVersion === studyVersion) { setPhotoBusy(false); updatePhotoPreview(); } }
 }
-// 书房按需启动，默认首页「我的家」不预占第二个 WebGL 上下文。
+// 书房是默认首页；另外三间小屋按需初始化，不同时加载其场景。
 window.addEventListener('pagehide', event => {
   if (!storageCleanupRunning && !resettingStudy) {
     if ($('booksDialog').open) storeNotes(false);

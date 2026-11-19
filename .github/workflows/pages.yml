@@ -27,6 +27,8 @@ jobs:
           node-version: '22'
       - name: Check JavaScript and offline resources
         run: node scripts/check.mjs
+      - name: Test meditation Cron and elapsed-time rules
+        run: node scripts/test-meditation.mjs
       - name: Install browser regression runner
         run: npm install --no-save --no-audit --no-fund playwright-core@1.56.1
       - name: Check real browser flows
