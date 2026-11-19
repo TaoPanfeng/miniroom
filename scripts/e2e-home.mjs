@@ -151,6 +151,7 @@ try {
   passed('existing study opens and notes can be saved');
 
   await enter('meditation');
+  await page.screenshot({path:new URL('meditation-desktop.png',output).pathname});
   assert.equal(await page.locator('#meditationRoomView').isVisible(),true);
   assert.equal(await page.locator('#studyRoomView').isVisible(),false);
   assert.equal(await page.locator('.meditation-room canvas').count(),0,'Meditation should not load a 3D renderer');
@@ -249,6 +250,45 @@ try {
   await page.screenshot({path:new URL('meditation-mobile.png',output).pathname});
   await enter('study');
   passed('meditation timer stays usable in 390px mobile viewport');
+
+  // 使用浏览器虚拟时钟验证「从开始计时每隔 N 分钟」，无需实际等待一分钟。
+  const intervalPage=await context.newPage();
+  await intervalPage.goto(host,{waitUntil:'domcontentloaded'});
+  await intervalPage.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
+  await intervalPage.locator('#roomSwitcherBtn').click();
+  await intervalPage.locator('#roomPickerDialog [data-room-choice="meditation"]').click();
+  await intervalPage.locator('#meditationRoomView').waitFor({state:'visible',timeout:12000});
+  await intervalPage.clock.install({time:new Date(2026,10,19,8,2,0)});
+  await intervalPage.locator('[data-med-schedule="interval"]').click();
+  await intervalPage.locator('#medMinutes').selectOption('1');
+  await intervalPage.locator('#medVoice').uncheck();
+  await intervalPage.locator('#medBell').uncheck();
+  await intervalPage.locator('[data-med-action="start"]').click();
+  await intervalPage.clock.fastForward(60_500);
+  assert.equal(await intervalPage.locator('.meditation-room').getAttribute('data-announcements'),'1');
+  assert.match(await intervalPage.locator('.med-announcement').textContent(),/1分钟/);
+  await intervalPage.locator('[data-med-action="pause"]').click();
+  const pausedElapsed=await intervalPage.locator('.med-elapsed').textContent();
+  await intervalPage.clock.fastForward(32_000);
+  assert.equal(await intervalPage.locator('.med-elapsed').textContent(),pausedElapsed);
+  await intervalPage.locator('[data-med-action="start"]').click();
+  await intervalPage.clock.fastForward(60_000);
+  assert.equal(await intervalPage.locator('.meditation-room').getAttribute('data-announcements'),'2');
+  await intervalPage.close();
+  passed('interval reminders run at elapsed minute boundaries; pausing excludes elapsed time');
+
+  // 本机「清理全部」需要同时清空第四间房的偏好和计时，不只删照片墙。
+  assert.ok(await page.evaluate(()=>!!localStorage.getItem('miniroom-meditation-preferences-v1')));
+  await page.locator('#storageManagerBtn').click();
+  await page.locator('[data-sm-scope="all"]').click();
+  await page.locator('.sm-accept').click();
+  await page.waitForFunction(()=>localStorage.getItem('miniroom-meditation-preferences-v1')===null,null,{timeout:20000});
+  await page.locator('.sm-close').click();
+  await enter('meditation');
+  assert.equal(await page.locator('[data-med-schedule="interval"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('.med-elapsed').textContent(),'00:00:00');
+  await enter('study');
+  passed('clear-all wipes meditation preferences and live session alongside study/gallery data');
 
   // 不支持 WebGL 的设备仍能查看户型，并且「俯视」真的切换投影。
   const fallbackContext=await browser.newContext({viewport:{width:1090,height:740}});
