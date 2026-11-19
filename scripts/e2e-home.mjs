@@ -362,6 +362,9 @@ try {
   await enter('dark');
   assert.equal(await page.locator('.dark-room-view').getAttribute('data-speed'),'slow');
   assert.equal(await page.locator('.dark-room-view').getAttribute('data-intensity'),'barely');
+  // 自动隐藏后，用户要先在画面空白处唤出控件才能点击退出。
+  await page.locator('.dark-field').click({position:{x:4,y:200}});
+  await page.locator('.dark-controls').waitFor({state:'visible'});
   await page.locator('[data-dark-action="exit"]').click();
   await page.locator('#studyRoomView').waitFor({state:'visible'});
   passed('clear-all wipes meditation and black-room preferences, preserving other rooms');
