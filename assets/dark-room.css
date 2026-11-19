@@ -1,0 +1,95 @@
+/*
+ * 黑屋没有几何体、图片、白色渐变或绘制循环。
+ * 渐变峰值最高仅接近 #0A0B0B，视觉上始终是暗黑的。
+ */
+body[data-room="dark"]{
+  background:#000!important;color:#aeb7ad;
+  overflow:hidden;height:100svh;
+}
+body[data-room="dark"] .topbar,
+body[data-room="dark"] .footer,
+body[data-room="dark"] .toast{display:none!important}
+.dark-room-view{
+  position:fixed;inset:0;z-index:9999;isolation:isolate;
+  background:#000;color:#b3bfb3;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+.dark-room-view[hidden]{display:none!important}
+.dark-field{position:absolute;inset:0;z-index:0;background:#000;cursor:default;outline:none;touch-action:manipulation}
+.dark-field:focus-visible{outline:none}
+.dark-haze{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(
+    ellipse 73% 66% at 50% 42%,
+    var(--dark-peak,rgba(7,8,8,.55)) 0%,
+    rgba(5,6,6,.37) 25%,
+    rgba(2,3,3,.12) 58%,
+    transparent 95%
+  );
+  opacity:0;
+}
+.dark-room-view[data-mode="fade"] .dark-haze{
+  animation:dark-luminous-breath var(--dark-cycle,31s) ease-in-out infinite;
+}
+.dark-room-view[data-mode="black"] .dark-haze{
+  animation:none!important;opacity:0!important;
+}
+@keyframes dark-luminous-breath{
+  0%,12.9%,100%{opacity:0}
+  51.6%,61.3%{opacity:1}
+}
+/* 所有可见控件只是临时覆盖层；不组成任何可辨认的场景。 */
+.dark-controls{
+  position:fixed;top:clamp(16px,4vh,42px);left:50%;transform:translateX(-50%);
+  width:min(520px,calc(100vw - 32px));z-index:5;
+  padding:19px 20px 16px;border-radius:17px;
+  border:1px solid #282e2b;background:#0b0f0ef5;
+  color:#c5d0c6;
+  box-shadow:0 14px 58px #0009;
+  opacity:1;visibility:visible;
+  transition:opacity .55s ease,visibility .55s ease;
+}
+.dark-controls[data-visible="false"]{
+  opacity:0;visibility:hidden;pointer-events:none;
+}
+.dark-control-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px}
+.dark-control-heading>div{display:flex;flex-direction:column;gap:4px}
+.dark-control-heading strong{font-size:15px;font-weight:600;letter-spacing:2px;color:#e1e6e0}
+.dark-control-heading small{font-size:11px;color:#77877b}
+.dark-controls button,.dark-controls select{font:inherit}
+.dark-exit{border:1px solid #394139;background:#151b18;color:#c0cbbf;border-radius:8px;padding:9px 12px;font-size:11px;white-space:nowrap}
+.dark-exit:hover{background:#27312a}
+.dark-modes{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:11px;background:#151b18}
+.dark-modes button{min-height:36px;padding:8px 10px;border-radius:8px;color:#829283;font-size:12px}
+.dark-modes button[aria-pressed="true"]{background:#303d34;color:#e6eae3;font-weight:600}
+.dark-settings{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;align-items:center;margin-top:16px}
+.dark-field-label{font-size:11px;color:#9ba99d}
+.dark-settings select{
+  background:#151c18;border:1px solid #334036;border-radius:9px;
+  color:#c6d0c5;font-size:11px;min-height:38px;padding:8px 10px;width:100%;
+}
+.dark-settings select:disabled{opacity:.33}
+.dark-control-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+.dark-hide-option{display:flex;align-items:center;gap:8px;font-size:11px;color:#a1b0a4;cursor:pointer}
+.dark-hide-option input{width:15px;height:15px;accent-color:#698273}
+.dark-control-footer button{border-radius:8px;padding:8px 12px;background:#171f19;color:#bfc9bf;font-size:11px;border:1px solid #334137}
+.dark-note{font-size:10px;line-height:1.8;color:#6b776d;margin-top:13px}
+.dark-reveal{
+  position:fixed;right:0;bottom:0;width:56px;height:56px;z-index:4;
+  opacity:0;background:none;border:0;color:transparent;
+}
+.dark-room-view[data-controls="hidden"] .dark-field{cursor:none}
+.dark-controls button:focus-visible,.dark-controls select:focus-visible,.dark-reveal:focus-visible{
+  outline:2px solid #718c74;outline-offset:3px;
+}
+@media(max-width:520px){
+ .dark-controls{padding:15px 14px;top:max(12px,env(safe-area-inset-top));}
+ .dark-control-heading small{font-size:10px}
+ .dark-settings{grid-template-columns:100px minmax(0,1fr);gap:8px}
+ .dark-control-footer{align-items:flex-start}
+ .dark-hide-option{font-size:10px;max-width:70%}
+}
+@media(prefers-reduced-motion:reduce){
+ .dark-room-view[data-mode="fade"] .dark-haze{animation:none;opacity:.2}
+ .dark-controls{transition:none}
+}

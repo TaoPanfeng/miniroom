@@ -35,7 +35,7 @@ try {
   async function enter(name){
     await page.locator('#roomSwitcherBtn').click();
     await picker.locator('[data-room-choice="'+name+'"]').click();
-    await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':name==='gallery'?'galleryRoomView':'meditationRoomView')).waitFor({state:'visible',timeout:18000});
+    await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':name==='gallery'?'galleryRoomView':name==='meditation'?'meditationRoomView':'darkRoomView')).waitFor({state:'visible',timeout:18000});
   }
   await page.goto(host,{waitUntil:'domcontentloaded'});
   await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
@@ -45,7 +45,7 @@ try {
   assert.equal(await page.locator('#galleryRoomView').isVisible(),false);
   assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
   assert.ok((await page.locator('#photoPreview').getAttribute('src'))?.endsWith('/assets/default-photo.webp'), 'Study default frame should use the bundled Doraemon image');
-  assert.equal(await page.locator('[data-room-choice]').count(),4);
+  assert.equal(await page.locator('[data-room-choice]').count(),5);
   passed('original study with Doraemon frame is the default');
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
@@ -183,6 +183,51 @@ try {
   assert.ok((await page.evaluate(()=>localStorage.getItem('miniroom-meditation-preferences-v1')))?.includes('*/1'));
   passed('meditation room Cron validation, timed announcement, pause/resume, voice text, saved config and cross-room continuity');
 
+  await enter('dark');
+  const darkView=page.locator('#darkRoomView');
+  const darkHaze=page.locator('.dark-haze');
+  assert.equal(await darkView.isVisible(),true);
+  assert.equal(await page.locator('.dark-room-view canvas, .dark-room-view img').count(),0,
+    'Black room must not render images or furniture');
+  assert.equal(await page.locator('#studyRoomView').isVisible(),false);
+  assert.equal(await page.locator('.dark-room-view').getAttribute('data-mode'),'fade');
+  assert.equal(await page.locator('.dark-room-view').getAttribute('data-speed'),'slow');
+  const fadeName=await darkHaze.evaluate(el=>getComputedStyle(el).animationName);
+  assert.ok(fadeName.includes('dark-luminous-breath'),'Black room fade needs a compositor animation: '+fadeName);
+  assert.equal(await page.locator('body').getAttribute('data-room'),'dark');
+  await page.locator('[data-dark-mode="black"]').click();
+  assert.equal(await page.locator('.dark-room-view').getAttribute('data-mode'),'black');
+  assert.equal(await darkHaze.evaluate(el=>getComputedStyle(el).opacity),'0');
+  assert.equal(await darkHaze.evaluate(el=>getComputedStyle(el).animationName),'none');
+  assert.equal(await page.locator('.dark-field').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(0, 0, 0)');
+  await page.waitForFunction(()=>document.querySelector('.dark-room-view')?.dataset.controls==='hidden',null,{timeout:6000});
+  assert.equal(await page.locator('.dark-controls').getAttribute('data-visible'),'false');
+  await page.screenshot({path:new URL('dark-room-black.png',output).pathname});
+  await page.locator('.dark-field').click({position:{x:150,y:180}});
+  assert.equal(await page.locator('.dark-controls').getAttribute('data-visible'),'true');
+  await page.locator('[data-dark-mode="fade"]').click();
+  await page.locator('#darkSpeed').selectOption('fast');
+  await page.locator('#darkIntensity').selectOption('faint');
+  assert.equal(await darkView.getAttribute('data-speed'),'fast');
+  assert.equal(await darkView.getAttribute('data-intensity'),'faint');
+  const darkStyle=await darkView.evaluate(el=>({
+    duration:getComputedStyle(el.querySelector('.dark-haze')).animationDuration,
+    peak:el.style.getPropertyValue('--dark-peak')
+  }));
+  assert.equal(darkStyle.duration,'12s');
+  assert.match(darkStyle.peak,/rgba\(10, 11, 11, \.66\)/);
+  await page.waitForFunction(()=>document.querySelector('.dark-room-view')?.dataset.controls==='hidden',null,{timeout:6000});
+  await darkHaze.evaluate(el=>{el.style.animationDelay='-6s';});
+  await page.waitForTimeout(110);
+  await page.screenshot({path:new URL('dark-room-faint.png',output).pathname});
+  assert.ok((await page.evaluate(()=>localStorage.getItem('miniroom-dark-room-v1')))?.includes('fast'));
+  await page.keyboard.press('Escape');
+  assert.equal(await darkView.getAttribute('data-controls'),'visible');
+  await page.locator('[data-dark-action="exit"]').click();
+  await page.locator('#studyRoomView').waitFor({state:'visible'});
+  assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
+  passed('fifth dark room: black is mathematically #000, subtle looping fade, controls auto-hide, reveal, Escape, persisted settings and exit');
+
   await enter('gallery');
   await page.locator('.gw-loading').waitFor({state:'hidden',timeout:18000});
   const testImage = new URL('../assets/default-photo.webp',import.meta.url).pathname;
@@ -223,6 +268,11 @@ try {
   await enter('meditation');
   assert.equal(await page.locator('#medCron').inputValue(),'*/1 * * * * *','Meditation preferences should survive reload');
   assert.equal(await page.locator('[data-med-schedule="cron"]').getAttribute('aria-pressed'),'true');
+  await enter('dark');
+  assert.equal(await page.locator('.dark-room-view').getAttribute('data-mode'),'fade','Dark room settings must survive refresh');
+  assert.equal(await page.locator('#darkSpeed').inputValue(),'fast');
+  await page.locator('[data-dark-action="exit"]').click();
+  await page.locator('#studyRoomView').waitFor({state:'visible'});
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
 
@@ -250,6 +300,14 @@ try {
   await page.screenshot({path:new URL('meditation-mobile.png',output).pathname});
   await enter('study');
   passed('meditation timer stays usable in 390px mobile viewport');
+  await enter('dark');
+  await page.locator('.dark-field').click({position:{x:80,y:280}});
+  const overlayBox=await page.locator('.dark-controls').boundingBox();
+  assert.ok(overlayBox&&overlayBox.x>=-1&&overlayBox.x+overlayBox.width<=393,'Dark controls overflow on mobile');
+  await page.screenshot({path:new URL('dark-room-mobile-controls.png',output).pathname});
+  await page.locator('[data-dark-action="exit"]').click();
+  await page.locator('#studyRoomView').waitFor({state:'visible'});
+  passed('fifth dark room mobile controls fit within 390px; exit returns to unchanged study');
 
   // 使用浏览器虚拟时钟验证「从开始计时每隔 N 分钟」，无需实际等待一分钟。
   const intervalPage=await context.newPage();
@@ -277,18 +335,25 @@ try {
   await intervalPage.close();
   passed('interval reminders run at elapsed minute boundaries; pausing excludes elapsed time');
 
-  // 本机「清理全部」需要同时清空第四间房的偏好和计时，不只删照片墙。
+  // 「清理全部」同时删除第四间冥想和第五间黑屋偏好，不删除普通原文件。
   assert.ok(await page.evaluate(()=>!!localStorage.getItem('miniroom-meditation-preferences-v1')));
+  assert.ok(await page.evaluate(()=>!!localStorage.getItem('miniroom-dark-room-v1')));
   await page.locator('#storageManagerBtn').click();
   await page.locator('[data-sm-scope="all"]').click();
   await page.locator('.sm-accept').click();
-  await page.waitForFunction(()=>localStorage.getItem('miniroom-meditation-preferences-v1')===null,null,{timeout:20000});
+  await page.waitForFunction(()=>localStorage.getItem('miniroom-meditation-preferences-v1')===null
+    && localStorage.getItem('miniroom-dark-room-v1')===null,null,{timeout:20000});
   await page.locator('.sm-close').click();
   await enter('meditation');
   assert.equal(await page.locator('[data-med-schedule="interval"]').getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('.med-elapsed').textContent(),'00:00:00');
   await enter('study');
-  passed('clear-all wipes meditation preferences and live session alongside study/gallery data');
+  await enter('dark');
+  assert.equal(await page.locator('.dark-room-view').getAttribute('data-speed'),'slow');
+  assert.equal(await page.locator('.dark-room-view').getAttribute('data-intensity'),'barely');
+  await page.locator('[data-dark-action="exit"]').click();
+  await page.locator('#studyRoomView').waitFor({state:'visible'});
+  passed('clear-all wipes meditation and black-room preferences, preserving other rooms');
 
   // 不支持 WebGL 的设备仍能查看户型，并且「俯视」真的切换投影。
   const fallbackContext=await browser.newContext({viewport:{width:1090,height:740}});

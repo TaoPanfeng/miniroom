@@ -35,3 +35,8 @@ body[data-room=gallery]{--paper:#f6f3eb;--surface:#fffdf6;--ink:#3e4939;--muted:
  .room-choices{grid-template-columns:1fr}
  .room-choice-art svg{height:100px}
 }
+
+/* 第五间黑屋：卡片只是入口预览，真正房间内不显示任何物体。 */
+.dark-choice-art{background:#000}
+.dark-choice-art svg{height:115px}
+@media(max-width:700px){.dark-choice-art svg{height:100px}}

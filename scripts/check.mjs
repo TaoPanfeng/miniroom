@@ -65,11 +65,13 @@ for (let i=0;i<HOME_ROOMS.length;i++) for(let j=i+1;j<HOME_ROOMS.length;j++){
   const ih=Math.min(a.z2,b.z2)-Math.max(a.z1,b.z1);
   if(iw>1e-6&&ih>1e-6)errors.push('Home rooms overlap: '+HOME_ROOMS[i]+' / '+HOME_ROOMS[j]);
 }
-for(const room of ['home','study','gallery','meditation']){
+for(const room of ['home','study','gallery','meditation','dark']){
   if(!html.includes('data-room-choice="'+room+'"'))errors.push('Missing room picker choice: '+room);
 }
 if(!html.includes('id="homeRoomView"'))errors.push('Missing home view container');
 if(!html.includes('id="meditationRoomView"'))errors.push('Missing meditation view container');
+if(!html.includes('id="darkRoomView"'))errors.push('Missing dark room view container');
+if(!html.includes('assets/dark-room.css'))errors.push('Missing dark room CSS');
 if(!html.includes('assets/meditation-room.css'))errors.push('Missing meditation CSS');
 for (const [key, spot] of Object.entries(HOME_FOCUS)) {
   if (!HOME_PLAN[spot.room]) errors.push('Unknown focus room: ' + key);
@@ -79,7 +81,7 @@ for (const [key, spot] of Object.entries(HOME_FOCUS)) {
 }
 if (Object.keys(HOME_FOCUS).length !== 8) errors.push('Expected 7 room focuses and 1 loft focus');
 if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}
-else console.log('Home layout verified: '+HOME_ROOMS.length+' rooms, ~'+totalArea.toFixed(1)+' m²; 4 room choices.');
+else console.log('Home layout verified: '+HOME_ROOMS.length+' rooms, ~'+totalArea.toFixed(1)+' m²; 5 room choices.');
 
 
 // P0：室内行走应从主门开始，站位不能落在柜子/床体或其他房间。

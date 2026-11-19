@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="./assets/storage-manager.css">
   <link rel="stylesheet" href="./assets/home-room.css">
   <link rel="stylesheet" href="./assets/meditation-room.css">
+  <link rel="stylesheet" href="./assets/dark-room.css">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body data-mood="day" data-room="study">
@@ -128,6 +129,7 @@
   <main id="galleryRoomView" aria-label="照片小屋" hidden></main>
   <main id="homeRoomView" aria-label="我的家" hidden></main>
   <main id="meditationRoomView" aria-label="冥想计时小屋" hidden></main>
+  <main id="darkRoomView" aria-label="黑屋" hidden></main>
 
   <footer class="footer"><span id="saveStatus"><svg><use href="#i-check"/></svg>小屋的记忆，留在本机</span><span>BUILT FOR A SLOWER MOMENT <i>✦</i></span></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -135,7 +137,7 @@
   <dialog id="roomPickerDialog" class="dialog room-picker" aria-labelledby="roomPickerTitle">
     <div class="dialog-top"><span class="dialog-kicker">A DIFFERENT LITTLE WORLD</span><button class="icon-button" data-close aria-label="关闭小屋选择"><svg><use href="#i-close"/></svg></button></div>
     <h2 id="roomPickerTitle">今天，想待在哪一间？</h2>
-    <p class="dialog-intro">书房、照片、家，还有一间只属于呼吸与时间的冥想小屋。</p>
+    <p class="dialog-intro">五间小屋各有自己的空间：书房、照片、我的家、冥想计时与黑屋。</p>
     <div class="room-choices">
       <button class="room-choice" data-room-choice="home" aria-pressed="false">
         <span class="room-choice-art home-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160">
@@ -175,8 +177,17 @@
         <span class="room-choice-copy"><strong>冥想计时</strong><small>间隔或 Cron 提醒，轻声告诉你已过多久。</small></span>
         <span class="room-choice-status">进入小屋</span>
       </button>
+      <button class="room-choice" data-room-choice="dark" aria-pressed="false">
+        <span class="room-choice-art dark-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160">
+          <defs><radialGradient id="dark-choice-glow"><stop offset="0%" stop-color="#191c1c"/><stop offset="55%" stop-color="#070909"/><stop offset="100%" stop-color="#000"/></radialGradient></defs>
+          <rect width="240" height="160" fill="#000"/>
+          <ellipse cx="120" cy="78" rx="94" ry="63" fill="url(#dark-choice-glow)"/>
+        </svg></span>
+        <span class="room-choice-copy"><strong>黑屋</strong><small>纯黑，或极弱微光循环往复。</small></span>
+        <span class="room-choice-status">进入小屋</span>
+      </button>
     </div>
-    <p class="fine-print">四间小屋互不影响：冥想提醒在本浏览器运行，书房与照片素材继续保留。</p>
+    <p class="fine-print">五间小屋互不影响；进入黑屋后可点击屏幕唤出控件，随时退出。</p>
   </dialog>
 
   <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">

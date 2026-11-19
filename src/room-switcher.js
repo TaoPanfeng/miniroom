@@ -1,6 +1,6 @@
 import { createHomeView } from './home-room-ui.js';
 
-/** 四间小屋共享切换器。默认仍是带图片相框的书房，冥想计时与其他房间独立。 */
+/** 五间小屋共享切换器。书房仍为默认入口，黑屋按需加载且独立保存偏好。 */
 export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStorage = () => {} }) {
   const button=document.getElementById('roomSwitcherBtn');
   const picker=document.getElementById('roomPickerDialog');
@@ -8,9 +8,10 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
   const galleryHost=document.getElementById('galleryRoomView');
   const homeHost=document.getElementById('homeRoomView');
   const meditationHost=document.getElementById('meditationRoomView');
+  const darkHost=document.getElementById('darkRoomView');
   const choices=[...picker.querySelectorAll('[data-room-choice]')];
-  const names={home:'我的家',study:'书房',gallery:'照片小屋',meditation:'冥想计时'};
-  let current='study',gallery=null,meditation=null,switching=false,disposed=false;
+  const names={home:'我的家',study:'书房',gallery:'照片小屋',meditation:'冥想计时',dark:'黑屋'};
+  let current='study',gallery=null,meditation=null,dark=null,switching=false,disposed=false;
   const home=createHomeView({container:homeHost,notify});
 
   function paint(){
@@ -25,7 +26,7 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
     }
     document.getElementById('helpBtn').hidden=current!=='study';
     document.getElementById('settingsBtn').hidden=current!=='study';
-    document.getElementById('storageManagerBtn').hidden=current==='home'||current==='meditation';
+    document.getElementById('storageManagerBtn').hidden=['home','meditation','dark'].includes(current);
     document.title=(current==='study'?getStudyName():names[current])+' · 栖间 miniroom';
   }
   async function enter(next,{restore=false}={}){
@@ -58,6 +59,15 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
           meditation=createMeditationRoom({container:meditationHost,notify});
         }
         if(!meditation.open())throw new Error('冥想计时小屋暂时无法打开。');
+      }else if(next==='dark'){
+        if(!dark){
+          const {createDarkRoom}=await import('./dark-room.js');
+          if(disposed)return false;
+          dark=createDarkRoom({
+            container:darkHost,notify,onExit:()=>enter('study')
+          });
+        }
+        if(!dark.open())throw new Error('黑屋暂时无法打开。');
       }
       if(prior==='gallery'&&gallery&&!gallery.close()){
         if(next==='home')home.close();
@@ -65,24 +75,28 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       }
       if(prior==='home')home.close();
       if(prior==='meditation')meditation?.close();
+      if(prior==='dark')dark?.close();
       current=next;
       study.hidden=next!=='study';
       galleryHost.hidden=next!=='gallery';
       homeHost.hidden=next!=='home';
       meditationHost.hidden=next!=='meditation';
+      darkHost.hidden=next!=='dark';
       paint();
       onChange(current);
       if(!restore)window.scrollTo({top:0,behavior:'instant'});
-      button.focus({preventScroll:true});
+      if(next!=='dark')button.focus({preventScroll:true});
       return true;
     }catch(error){
       if(next==='home')home.close();
       if(next==='gallery')gallery?.close();
       if(next==='meditation')meditation?.close();
+      if(next==='dark')dark?.close();
       study.hidden=prior!=='study';
       galleryHost.hidden=prior!=='gallery';
       homeHost.hidden=prior!=='home';
       meditationHost.hidden=prior!=='meditation';
+      darkHost.hidden=prior!=='dark';
       paint();
       notify(error.message||'这间小屋暂时无法打开，请刷新后重试。',5500);
       return false;
@@ -105,6 +119,7 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
   galleryHost.hidden=true;
   homeHost.hidden=true;
   meditationHost.hidden=true;
+  darkHost.hidden=true;
   paint();
   onChange(current);
   return {
@@ -115,6 +130,11 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       const {clearMeditationPreferences}=await import('./meditation-room.js');
       return clearMeditationPreferences();
     },
+    async clearDarkSettings(){
+      if(dark)return dark.clearSavedSettings();
+      const {clearDarkSettings}=await import('./dark-room.js');
+      return clearDarkSettings();
+    },
     async refreshStorage(cleared=[]){
       if(disposed)return;
       if(gallery&&cleared.includes('gallery'))await gallery.refreshStorage();
@@ -122,7 +142,7 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
     },
     dispose(){
       disposed=true;
-      home.dispose();gallery?.dispose();meditation?.dispose();
+      home.dispose();gallery?.dispose();meditation?.dispose();dark?.dispose();
       button.removeEventListener('click',openPicker);
       handlers.forEach(([choice,handler])=>choice.removeEventListener('click',handler));
     }

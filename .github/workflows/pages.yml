@@ -29,6 +29,8 @@ jobs:
         run: node scripts/check.mjs
       - name: Test meditation Cron and elapsed-time rules
         run: node scripts/test-meditation.mjs
+      - name: Test black room near-black presets
+        run: node scripts/test-dark-room.mjs
       - name: Install browser regression runner
         run: npm install --no-save --no-audit --no-fund playwright-core@1.56.1
       - name: Check real browser flows
