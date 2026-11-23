@@ -160,11 +160,11 @@ export function createBundRoom({container,notify=()=>{}}={}){
   }
   function markSpotlight(){
     const cards=[...wall.querySelectorAll('.bund-card')];
-    cards.forEach((card,index)=>{card.dataset.spotlight=String(prefs.spotlight&&index===spotIndex);});
+    cards.forEach((card,index)=>{card.dataset.spotlight=String(prefs.spotlight&&rows.length<=36&&index===spotIndex);});
   }
   function startSpotlight(){
     clearInterval(spotTimer);spotTimer=0;
-    if(!active||!prefs.spotlight||reducedMotion.matches||rows.length<2)return;
+    if(!active||!prefs.spotlight||reducedMotion.matches||rows.length<2||rows.length>36)return;
     spotTimer=window.setInterval(()=>{
       if(!active||document.hidden||viewer.open)return;
       spotIndex=(spotIndex+1)%rows.length;

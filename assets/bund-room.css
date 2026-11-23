@@ -70,8 +70,9 @@ body[data-room="bund"] .footer{display:none!important}
   box-shadow:0 6px 22px #0b122954}
 .bund-add:hover:not(:disabled){background:#fff0db}
 .bund-add:disabled{opacity:.5;cursor:not-allowed}
-.bund-stage{position:relative;flex:1;min-height:460px;display:grid;place-items:center;
-  padding:4px 20px 12px;perspective:1400px;z-index:2}
+.bund-stage{position:relative;flex:0 0 auto;height:clamp(460px,57svh,645px);min-height:460px;
+  display:grid;place-items:center;padding:4px 20px 12px;perspective:1400px;z-index:2;
+  overflow:auto;overscroll-behavior:contain;scrollbar-color:#ffe1af60 transparent;scrollbar-width:thin}
 .bund-wall{
   display:grid;grid-template-columns:repeat(var(--bund-columns,1),var(--bund-tile,250px));
   grid-auto-flow:row;gap:var(--bund-gap,14px);width:max-content;max-width:100%;
@@ -166,7 +167,7 @@ body[data-room="bund"] .footer{display:none!important}
  .bund-intro h1{font-size:35px;margin:8px 0 5px}
  .bund-intro p{font-size:11px}
  .bund-top-tools{justify-content:space-between;width:100%;padding:0}
- .bund-stage{min-height:380px;padding:7px}
+ .bund-stage{height:clamp(380px,52svh,580px);min-height:380px;padding:7px}
  .bund-bottom{padding:13px 15px 22px;gap:11px}
  .bund-controls{gap:9px 13px}
  .bund-viewer-inner{grid-template-columns:1fr}
@@ -191,3 +192,8 @@ body[data-room="bund"] .footer{display:none!important}
  .bund-card,.bund-card-photo,.bund-background,.bund-cloudglow{transition:none}
  .bund-wall{transform:none}
 }
+
+/* 百张密集墙保持静态，避免卡片在手指/鼠标点击时四处移动。 */
+.bund-stage[data-layout="dense"] .bund-card[data-spotlight="true"]{transform:none}
+.bund-stage[data-layout="dense"] .bund-card:hover,
+.bund-stage[data-layout="dense"] .bund-card:focus-visible{transition-duration:.22s}
