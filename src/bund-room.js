@@ -349,9 +349,17 @@ export function createBundRoom({container,notify=()=>{}}={}){
     open,close,
     get busy(){return busy;},
     async refreshStorage(){if(!disposed)await refresh();},
+    clearSavedSettings(){
+      // 全部清理后连当前页面内存中的背景偏好一起归零。
+      const saved=clearBundPreferences();
+      Object.assign(prefs,safePrefs());
+      if(active){paintScene();startSpotlight();markSpotlight();}
+      return saved;
+    },
     async clearLocal(){
       if(busy)throw new Error('正在导入照片，请完成后再清理。');
-      await bundClear();clearBundPreferences();Object.assign(prefs,safePrefs());
+      await bundClear();
+      this.clearSavedSettings();
       if(active)await refresh();
     },
     dispose(){

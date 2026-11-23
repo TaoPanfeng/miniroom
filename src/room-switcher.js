@@ -149,6 +149,7 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       return clearDarkSettings();
     },
     async clearBundSettings(){
+      if(bund)return bund.clearSavedSettings();
       const {clearBundPreferences}=await import('./bund-room.js');
       return clearBundPreferences();
     },
