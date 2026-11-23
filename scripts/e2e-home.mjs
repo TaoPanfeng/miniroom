@@ -261,6 +261,10 @@ try {
   const photo=page.locator('.bund-card').first();
   await photo.click();
   await page.locator('.bund-viewer').waitFor({state:'visible'});
+  await page.waitForFunction(()=>{
+    const img=document.querySelector('.bund-viewer-art img');
+    return img?.complete&&img.naturalWidth>0&&img.getBoundingClientRect().width>0;
+  },null,{timeout:15000});
   assert.equal(await page.locator('.bund-viewer-art img').isVisible(),true);
   await page.locator('#bundEditYear').selectOption('2020');
   await page.locator('[data-bund-action="save-year"]').click();
