@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="上海外滩和陆家嘴隔黄浦江相望的艺术化全景">
+<defs>
+<linearGradient id="sky" x2=".25" y2="1"><stop stop-color="#193954"/><stop offset=".42" stop-color="#64738d"/><stop offset=".7" stop-color="#b38e91"/><stop offset="1" stop-color="#f3af79"/></linearGradient>
+<radialGradient id="sun"><stop stop-color="#ffe4aa" stop-opacity=".8"/><stop offset=".4" stop-color="#f7b88c" stop-opacity=".42"/><stop offset="1" stop-color="#fbb487" stop-opacity="0"/></radialGradient>
+<linearGradient id="river" x2=".2" y2="1"><stop stop-color="#698195"/><stop offset=".5" stop-color="#334b69"/><stop offset="1" stop-color="#1e354c"/></linearGradient>
+<linearGradient id="sand" x2="0" y2="1"><stop stop-color="#ead9ba"/><stop offset=".65" stop-color="#c19a71"/><stop offset="1" stop-color="#7f634f"/></linearGradient>
+<linearGradient id="glass" x2=".55" y2="1"><stop stop-color="#6888a8"/><stop offset="1" stop-color="#294865"/></linearGradient>
+<linearGradient id="tower" x2="0" y2="1"><stop stop-color="#8ba6bb"/><stop offset=".55" stop-color="#587b95"/><stop offset="1" stop-color="#2b4d69"/></linearGradient>
+<pattern id="warmWin" width="19" height="25" patternUnits="userSpaceOnUse"><rect x="4" y="5" width="8" height="12" fill="#e3be87" opacity=".65"/><rect x="5" y="6" width="6" height="7" fill="#ffe2ab" opacity=".55"/></pattern>
+<pattern id="officeWin" width="16" height="18" patternUnits="userSpaceOnUse"><rect x="4" y="3" width="6" height="6" fill="#afcae0" opacity=".57"/><rect x="5" y="11" width="4" height="3" fill="#f3c394" opacity=".5"/></pattern>
+<filter id="soft" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="21"/></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#sky)"/>
+<ellipse cx="630" cy="450" rx="430" ry="270" fill="url(#sun)"/>
+<g fill="#f8d8b6" opacity=".2"><path d="M0 214Q200 176 340 219T755 206Q978 145 1210 202T1600 168v23Q1260 237 1050 221T660 238Q393 262 0 246Z"/><path d="M0 295Q230 258 440 306T888 293Q1090 269 1300 306T1600 282v14Q1430 347 1110 320T590 332Q250 354 0 328Z"/></g>
+<g opacity=".45" fill="#41566c"><path d="M0 480h1600v116H0z"/><path d="M230 477h38V374h40v103h44V417h40v60h44V397h51v80h40V363h45v114h38V421h44v56h36v-91h45v91h44V413h45v64h57V397h42v80h46V380h56v97h44V410h53v67h46V369h45v108h50V426h45v51h48V377h40v100h50V402h36v75h55V426h52v51h48V391h38v86h61v-85h34v85h85z"/></g>
+<!-- Pudong Lujiazui skyline across the river -->
+<g fill="url(#glass)" stroke="#284862" stroke-width="3">
+<rect x="740" y="372" width="84" height="165"/><rect x="823" y="320" width="73" height="217"/>
+<rect x="905" y="304" width="70" height="233"/><rect x="976" y="343" width="50" height="194"/>
+<rect x="1046" y="365" width="92" height="172"/><rect x="1162" y="320" width="72" height="217"/>
+<rect x="1234" y="354" width="67" height="183"/><rect x="1360" y="335" width="72" height="202"/>
+<rect x="1450" y="369" width="55" height="168"/><rect x="1530" y="393" width="63" height="144"/>
+</g>
+<g fill="url(#officeWin)" opacity=".83"><rect x="740" y="372" width="84" height="165"/><rect x="823" y="320" width="73" height="217"/><rect x="905" y="304" width="70" height="233"/><rect x="976" y="343" width="50" height="194"/><rect x="1046" y="365" width="92" height="172"/><rect x="1162" y="320" width="72" height="217"/><rect x="1234" y="354" width="67" height="183"/><rect x="1360" y="335" width="72" height="202"/><rect x="1450" y="369" width="55" height="168"/></g>
+<!-- Shanghai World Financial Center -->
+<path d="M1250 529V248h90v281Z" fill="#537592" stroke="#18384e" stroke-width="4"/>
+<path d="M1277 264h37l-9 28h-19Z" fill="#7195af" stroke="#d4d5d3" stroke-width="3"/>
+<path d="M1263 315h63M1263 356h63M1263 398h63M1263 440h63M1263 483h63" stroke="#9ab6ca" stroke-width="5" opacity=".35"/>
+<!-- Jin Mao Tower -->
+<path d="M1093 536V321h12v-21h12v-21h12v-19h12v-26h12v26h12v19h12v21h12v21h12v215Z" fill="#8b96a3" stroke="#425974" stroke-width="5"/>
+<path d="M1153 231v-31M1120 320h67M1107 377h92M1093 438h115" stroke="#e1c795" stroke-width="4" opacity=".85"/>
+<!-- Shanghai Tower -->
+<path d="M1420 536Q1401 403 1427 251Q1451 146 1458 144Q1480 162 1479 279Q1488 414 1469 536Z" fill="url(#tower)" stroke="#254a66" stroke-width="5"/>
+<path d="M1434 518Q1460 411 1442 281Q1436 213 1458 144" stroke="#adcee0" stroke-width="9" opacity=".47" fill="none"/>
+<path d="M1478 514Q1442 377 1475 241" stroke="#e1e0c9" stroke-width="5" opacity=".3" fill="none"/>
+<!-- Oriental Pearl Tower -->
+<g transform="translate(970 0)">
+<path d="M0 533L34 402 52 402 94 533" stroke="#a15a72" stroke-width="10" fill="none"/>
+<path d="M28 400V224M69 400V226M49 240V145" stroke="#f1a5ae" stroke-width="11"/>
+<path d="M49 145V94" stroke="#dcb2ad" stroke-width="5"/>
+<circle cx="49" cy="257" r="43" fill="#c67d94" stroke="#f1c2c1" stroke-width="8"/>
+<circle cx="49" cy="392" r="30" fill="#d68da3" stroke="#f1c2c1" stroke-width="6"/>
+<circle cx="49" cy="181" r="15" fill="#e5abb6" stroke="#f2c3bd" stroke-width="4"/>
+<ellipse cx="49" cy="250" rx="17" ry="29" fill="#f5c9c0" opacity=".32"/>
+<path d="M11 255h74M22 229h53M20 276h60M20 392h58" stroke="#a55373" stroke-width="5" opacity=".7"/>
+</g>
+<!-- Yellow glowing banks across river -->
+<path d="M700 535H1600v29H700Z" fill="#dfb683"/>
+<path d="M700 548H1600" stroke="#f9c988" stroke-width="5" stroke-dasharray="15 15"/>
+<rect y="544" width="1600" height="356" fill="url(#river)"/>
+<!-- waterfront reflections -->
+<g opacity=".43" stroke-linecap="round">
+<path d="M775 577h70M784 605h43M786 650h50M803 688h24M780 763h60M1021 589h32M1012 632h52M1017 678h47M1008 732h83M1078 787h29" stroke="#ffc5b3" stroke-width="6"/>
+<path d="M1300 583h61M1285 629h72M1295 668h66M1289 722h73M1445 603h47M1442 647h67M1449 724h45M1450 770h69" stroke="#9bcce3" stroke-width="5"/>
+<path d="M260 609h100M240 660h119M350 708h72M223 774h68M440 604h49M465 672h81" stroke="#eab67c" stroke-width="6"/>
+</g>
+<g opacity=".24" stroke="#b4cdd3" stroke-width="2">
+<path d="M0 610Q240 587 440 612T900 602T1600 613M0 682Q280 665 530 687T1090 674T1600 684M0 780Q230 764 480 793T970 775T1600 791" fill="none"/>
+<path d="M120 640h160M680 650h290M1030 708h260M250 834h400M980 849h350"/>
+</g>
+<!-- Bund buildings on left shore: neoclassical stone bank facades -->
+<g fill="url(#sand)" stroke="#8e705d" stroke-width="2">
+<path d="M-40 544V332H105V544Z"/><path d="M105 544V308H215V544Z"/><path d="M215 544V351H329V544Z"/>
+<path d="M329 544V289H450V544Z"/><path d="M450 544V340H530V544Z"/><path d="M530 544V377H624V544Z"/>
+<path d="M624 544V416H690V544Z"/>
+</g>
+<g fill="#d7a477" stroke="#7b6658" stroke-width="2">
+<path d="M-40 332 27 290 106 332Z"/><path d="M105 308 163 268 215 308Z"/>
+<path d="M215 351 272 326 329 351Z"/><path d="M329 289 390 249 450 289Z"/>
+<path d="M450 340 490 318 530 340Z"/>
+</g>
+<!-- Customs House clock tower -->
+<g stroke="#876852" stroke-width="2"><rect x="355" y="204" width="62" height="111" fill="#c9ad89"/><rect x="368" y="166" width="38" height="39" fill="#d6b995"/><path d="M356 167 387 143 418 167Z" fill="#b78c70"/><path d="M387 142v-24" stroke="#8a5e4d" stroke-width="4"/><circle cx="386" cy="225" r="19" fill="#f6ebd7" stroke="#846d56" stroke-width="4"/><path d="M386 213v13l10 5" fill="none" stroke="#665346" stroke-width="3"/></g>
+<g fill="url(#warmWin)"><rect x="-30" y="349" width="133" height="190"/><rect x="108" y="319" width="102" height="219"/><rect x="220" y="361" width="103" height="179"/><rect x="335" y="303" width="107" height="236"/><rect x="455" y="349" width="67" height="189"/><rect x="538" y="384" width="78" height="152"/></g>
+<g stroke="#f5d6a2" opacity=".8" stroke-width="5"><path d="M-30 370H103M108 337H211M218 373H323M335 319H442M450 357H525M538 390H617"/><path d="M-40 523H694"/></g>
+<path d="M0 539Q340 552 700 536" stroke="#efc996" stroke-width="10" fill="none"/>
+<path d="M0 552Q300 567 715 552" stroke="#866a56" stroke-width="9" fill="none"/>
+<!-- promenade / near foreground -->
+<path d="M0 710Q175 679 412 721Q508 744 615 813L592 900H0Z" fill="#bfa37e"/>
+<path d="M0 737Q190 711 408 748Q517 781 589 844" fill="none" stroke="#f1d6a6" stroke-width="15"/>
+<path d="M0 775Q210 744 414 789Q511 824 567 878" fill="none" stroke="#886e56" stroke-width="4"/>
+<g fill="#6b5c4d"><rect x="86" y="662" width="14" height="132"/><rect x="266" y="683" width="14" height="129"/><rect x="455" y="741" width="14" height="134"/><path d="M0 672 492 807" stroke="#5e5249" stroke-width="13" fill="none"/></g>
+<g fill="#e8bf81"><circle cx="95" cy="650" r="11"/><circle cx="272" cy="669" r="10"/><circle cx="460" cy="728" r="9"/></g>
+<g fill="#fff1c1" opacity=".28" filter="url(#soft)"><circle cx="96" cy="650" r="25"/><circle cx="272" cy="669" r="26"/><circle cx="462" cy="731" r="23"/></g>
+</svg>

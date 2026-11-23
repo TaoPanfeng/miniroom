@@ -11,10 +11,16 @@ const SCOPES = {
     confirmation: '书房的相框照片、笔记、设置、专注计时与互动记录会清空，恢复初始状态。',
     icon: '<path d="M4 4h6v16H4zM10 4h5v16h-5zM16 5l4-1 3 15-4 1zM6 8h2m4 7h1"/>',
   },
+  bund: {
+    title: '仅外滩时光', name: '外滩时光',
+    description: '每年合影的压缩副本及其年份记录',
+    confirmation: '「外滩时光」照片库中的所有本机照片会删除，原照片小屋和手机原片不变。',
+    icon: '<rect x="2" y="7" width="20" height="13" rx="2"/><path d="m2 15 6-5 5 4 4-3 5 4M6 3h12"/>',
+  },
   all: {
     title: '全部小屋数据', name: '全部小屋数据',
-    description: '清理照片、书房、冥想与黑屋偏好',
-    confirmation: '照片小屋、书房存档、冥想提醒和黑屋偏好都会清理。冥想计时也会停止；原始照片和视频不会删除。',
+    description: '清理照片、书房、外滩合影、冥想与黑屋偏好',
+    confirmation: '照片小屋、书房、外滩时光、冥想提醒和黑屋偏好都会清理，冥想计时也会停止；手机原始照片和视频不会删除。',
     icon: '<path d="m3 10 9-7 9 7v11H3Z"/><path d="M9 21v-8h6v8"/>',
   },
 };
@@ -43,14 +49,14 @@ function errorMessage(error, fallback) {
 }
 function normalizeOverview(value) {
   const overview = {};
-  for (const scope of ['gallery', 'study']) {
+  for (const scope of ['gallery', 'study', 'bund']) {
     const data = value?.[scope];
     overview[scope] = data && !data.error && isSize(data.bytes)
       ? data
       : { ...data, error: errorMessage(data?.error, '暂时无法读取本机数据。') };
   }
-  overview.totalBytes = !overview.gallery.error && !overview.study.error
-    ? (isSize(value?.totalBytes) ? value.totalBytes : overview.gallery.bytes + overview.study.bytes)
+  overview.totalBytes = !overview.gallery.error && !overview.study.error && !overview.bund.error
+    ? (isSize(value?.totalBytes) ? value.totalBytes : overview.gallery.bytes + overview.study.bytes + overview.bund.bytes)
     : null;
   return overview;
 }
@@ -80,7 +86,7 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
     dialog.setAttribute('aria-describedby', `${id}Intro`);
     dialog.innerHTML = `
       <header class="sm-header"><div><p class="sm-kicker">清理缓存与本地存档</p><h2 id="${id}Title">本机存储管理</h2></div><button type="button" class="sm-close icon-button" aria-label="关闭本机存储管理">${svg('<path d="m6 6 12 12M6 18 18 6"/>')}</button></header>
-      <p id="${id}Intro" class="sm-intro">管理当前浏览器内的小屋存档，也可清除冥想与黑屋偏好。</p>
+      <p id="${id}Intro" class="sm-intro">管理当前浏览器内的小屋存档，也可清除外滩相册、冥想与黑屋偏好。</p>
       <div class="sm-overview">
         <div class="sm-total"><div><span>本机数据估算</span><strong class="sm-total-value">正在读取…</strong></div><button type="button" class="sm-refresh secondary-button">${svg('<path d="M20 7a9 9 0 1 0 1 8M20 3v5h-5"/>')}<span>刷新统计</span></button></div>
         <div class="sm-read-errors" role="status" hidden><strong>部分占用暂时无法读取</strong><ul></ul><p>可重试读取，也可继续选择清理范围。</p></div>
@@ -132,13 +138,14 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
 
   function detailFor(scope) {
     if (reading) return '正在读取…';
-    if (!overview || (scope === 'all' ? overview.gallery.error || overview.study.error : overview[scope].error)) return '占用暂时无法读取';
-    if (scope === 'all') return '照片小屋 + 书房 + 冥想 + 黑屋偏好';
+    if (!overview || (scope === 'all' ? overview.gallery.error || overview.study.error || overview.bund.error : overview[scope].error)) return '占用暂时无法读取';
+    if (scope === 'all') return '照片小屋 + 书房 + 外滩时光 + 冥想/黑屋偏好';
     const data = overview[scope];
     if (scope === 'gallery') {
       return Number.isInteger(data.count) && Number.isInteger(data.images) && Number.isInteger(data.videos)
         ? `${data.count} 项 · ${data.images} 张照片 · ${data.videos} 段视频` : '照片与视频数量待确认';
     }
+    if (scope === 'bund') return Number.isInteger(data.count) ? data.count+' 张年度外滩合影' : '外滩照片数量待确认';
     return [['相框', data.hasPhoto], ['笔记', data.hasNotes], ['设置', data.hasSettings]]
       .map(([name, exists]) => `${name}：${exists === true ? '有' : exists === false ? '无' : '待确认'}`).join(' · ');
   }
@@ -162,7 +169,7 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
   function renderOverview() {
     if (!refs || disposed) return;
     refs.total.textContent = reading ? '正在读取…' : overview && isSize(overview.totalBytes) ? formatBytes(overview.totalBytes) : '占用待确认';
-    const failures = reading ? [] : ['gallery', 'study'].filter(scope => overview?.[scope].error);
+    const failures = reading ? [] : ['gallery', 'study', 'bund'].filter(scope => overview?.[scope].error);
     refs.errors.hidden = !failures.length;
     refs.errors.querySelector('ul').replaceChildren(...failures.map(scope => element('li', '', `${SCOPES[scope].name}：${overview[scope].error}`)));
     for (const button of refs.scopes) {
@@ -184,11 +191,11 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
     } catch (error) {
       if (disposed || version !== readVersion) return false;
       const message = errorMessage(error, '暂时无法读取本机数据，请重试。');
-      overview = normalizeOverview({ gallery: { error: message }, study: { error: message } });
+      overview = normalizeOverview({ gallery: { error: message }, study: { error: message }, bund: { error: message } });
     } finally {
       if (!disposed && version === readVersion) { reading = false; renderOverview(); }
     }
-    return !overview.gallery.error && !overview.study.error;
+    return !overview.gallery.error && !overview.study.error && !overview.bund.error;
   }
   function permitted(scope) {
     try { return canClear(scope) === true; } catch { return false; }
@@ -215,11 +222,11 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
     refs.scopes.find(button => button.dataset.smScope === scope)?.focus({ preventScroll: true });
   }
   function renderResult(result, requested) {
-    const scopes = requested === 'all' ? ['gallery', 'study'] : [requested];
-    const cleared = new Set((Array.isArray(result?.cleared) ? result.cleared : []).filter(scope => scope === 'gallery' || scope === 'study'));
+    const scopes = requested === 'all' ? ['gallery', 'study', 'bund'] : [requested];
+    const cleared = new Set((Array.isArray(result?.cleared) ? result.cleared : []).filter(scope => scope === 'gallery' || scope === 'study' || scope === 'bund'));
     const failed = new Map();
     for (const failure of Array.isArray(result?.failed) ? result.failed : []) {
-      if (failure?.scope === 'gallery' || failure?.scope === 'study' || failure?.scope === 'all') {
+      if (failure?.scope === 'gallery' || failure?.scope === 'study' || failure?.scope === 'bund' || failure?.scope === 'all') {
         failed.set(failure.scope, errorMessage(failure.message, '未能完成清理，请重试。'));
         cleared.delete(failure.scope);
       }
@@ -243,7 +250,7 @@ export function initStorageManager({ trigger, getOverview, clearData, canClear =
     try {
       result = await clearData(scope);
     } catch (error) {
-      result = { cleared: [], failed: (scope === 'all' ? ['gallery', 'study'] : [scope]).map(name => ({ scope: name, message: errorMessage(error, '清理未能完成，请重试。') })) };
+      result = { cleared: [], failed: (scope === 'all' ? ['gallery', 'study', 'bund'] : [scope]).map(name => ({ scope: name, message: errorMessage(error, '清理未能完成，请重试。') })) };
     } finally { busy = false; }
     if (disposed) return;
     selectedScope = null; refs.confirm.hidden = true; refs.overview.hidden = false; refs.overviewAlert.hidden = true;

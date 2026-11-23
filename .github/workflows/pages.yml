@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,12 +25,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # Bundle the licensed Wikimedia Bund photograph into main exactly once.
+      # Once committed, both Pages and Download ZIP work without loading remote images.
+      - name: Vendor CC BY-SA Shanghai Bund photograph
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s assets/bund-background.jpg ]; then
+            curl --location --fail --retry 3 --connect-timeout 15 --max-time 80 \
+              --user-agent 'Miniroom-Local-Bund-Photo-Wall/1.0 (GitHub Pages; attribution in README)' \
+              'https://upload.wikimedia.org/wikipedia/commons/a/a3/Night_view_of_Shanghai_taken_at_the_Bund.jpg' \
+              --output assets/bund-background.jpg
+            python3 -c "from pathlib import Path; p=Path('assets/bund-background.jpg'); b=p.read_bytes(); assert b[:3] == bytes.fromhex('ffd8ff') and 30000 < len(b) < 3000000, 'Unexpected Bund image payload'"
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add assets/bund-background.jpg
+            git commit -m 'Bundle attributed Shanghai Bund background for offline photo wall'
+            git push origin HEAD:main
+          fi
       - name: Check JavaScript and offline resources
         run: node scripts/check.mjs
       - name: Test meditation Cron and elapsed-time rules
         run: node scripts/test-meditation.mjs
       - name: Test black room near-black presets
         run: node scripts/test-dark-room.mjs
+      - name: Test Bund photo grid and year boundaries
+        run: node scripts/test-bund.mjs
       - name: Install browser regression runner
         run: npm install --no-save --no-audit --no-fund playwright-core@1.56.1
       - name: Check real browser flows

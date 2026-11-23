@@ -1,6 +1,6 @@
 import { createHomeView } from './home-room-ui.js';
 
-/** 五间小屋共享切换器。书房仍为默认入口，黑屋按需加载且独立保存偏好。 */
+/** 六间小屋共享切换器。书房仍为默认入口；外滩时光独立于原照片小屋。 */
 export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStorage = () => {} }) {
   const button=document.getElementById('roomSwitcherBtn');
   const picker=document.getElementById('roomPickerDialog');
@@ -9,9 +9,10 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
   const homeHost=document.getElementById('homeRoomView');
   const meditationHost=document.getElementById('meditationRoomView');
   const darkHost=document.getElementById('darkRoomView');
+  const bundHost=document.getElementById('bundRoomView');
   const choices=[...picker.querySelectorAll('[data-room-choice]')];
-  const names={home:'我的家',study:'书房',gallery:'照片小屋',meditation:'冥想计时',dark:'黑屋'};
-  let current='study',gallery=null,meditation=null,dark=null,switching=false,disposed=false;
+  const names={home:'我的家',study:'书房',gallery:'照片小屋',meditation:'冥想计时',dark:'黑屋',bund:'外滩时光'};
+  let current='study',gallery=null,meditation=null,dark=null,bund=null,switching=false,disposed=false;
   const home=createHomeView({container:homeHost,notify});
 
   function paint(){
@@ -32,7 +33,7 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
   async function enter(next,{restore=false}={}){
     if(disposed||switching||!Object.hasOwn(names,next))return false;
     if(next===current){if(picker.open)picker.close();return true;}
-    if(gallery?.busy){notify('照片墙正在保存素材，请完成后再切换小屋。');return false;}
+    if(gallery?.busy||bund?.busy){notify('照片正在保存中，请完成后再切换小屋。');return false;}
     switching=true;
     button.disabled=true;
     choices.forEach(choice=>{choice.disabled=true;});
@@ -68,6 +69,13 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
           });
         }
         if(!dark.open())throw new Error('黑屋暂时无法打开。');
+      }else if(next==='bund'){
+        if(!bund){
+          const {createBundRoom}=await import('./bund-room.js');
+          if(disposed)return false;
+          bund=createBundRoom({container:bundHost,notify});
+        }
+        if(!await bund.open())throw new Error('外滩时光暂时无法打开。');
       }
       if(prior==='gallery'&&gallery&&!gallery.close()){
         if(next==='home')home.close();
@@ -76,12 +84,14 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       if(prior==='home')home.close();
       if(prior==='meditation')meditation?.close();
       if(prior==='dark')dark?.close();
+      if(prior==='bund')bund?.close();
       current=next;
       study.hidden=next!=='study';
       galleryHost.hidden=next!=='gallery';
       homeHost.hidden=next!=='home';
       meditationHost.hidden=next!=='meditation';
       darkHost.hidden=next!=='dark';
+      bundHost.hidden=next!=='bund';
       paint();
       onChange(current);
       if(!restore)window.scrollTo({top:0,behavior:'instant'});
@@ -92,11 +102,13 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       if(next==='gallery')gallery?.close();
       if(next==='meditation')meditation?.close();
       if(next==='dark')dark?.close();
+      if(next==='bund')bund?.close();
       study.hidden=prior!=='study';
       galleryHost.hidden=prior!=='gallery';
       homeHost.hidden=prior!=='home';
       meditationHost.hidden=prior!=='meditation';
       darkHost.hidden=prior!=='dark';
+      bundHost.hidden=prior!=='bund';
       paint();
       notify(error.message||'这间小屋暂时无法打开，请刷新后重试。',5500);
       return false;
@@ -120,11 +132,12 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
   homeHost.hidden=true;
   meditationHost.hidden=true;
   darkHost.hidden=true;
+  bundHost.hidden=true;
   paint();
   onChange(current);
   return {
     get current(){return current;},
-    get busy(){return switching||Boolean(gallery?.busy);},
+    get busy(){return switching||Boolean(gallery?.busy)||Boolean(bund?.busy);},
     async clearMeditationSettings(){
       if(meditation)return meditation.clearSavedSettings();
       const {clearMeditationPreferences}=await import('./meditation-room.js');
@@ -135,14 +148,19 @@ export function initRoomSwitcher({ getStudyName, onChange, notify, onRequestStor
       const {clearDarkSettings}=await import('./dark-room.js');
       return clearDarkSettings();
     },
+    async clearBundSettings(){
+      const {clearBundPreferences}=await import('./bund-room.js');
+      return clearBundPreferences();
+    },
     async refreshStorage(cleared=[]){
       if(disposed)return;
       if(gallery&&cleared.includes('gallery'))await gallery.refreshStorage();
+      if(bund&&cleared.includes('bund'))await bund.refreshStorage();
       if(!disposed)paint();
     },
     dispose(){
       disposed=true;
-      home.dispose();gallery?.dispose();meditation?.dispose();dark?.dispose();
+      home.dispose();gallery?.dispose();meditation?.dispose();dark?.dispose();bund?.dispose();
       button.removeEventListener('click',openPicker);
       handlers.forEach(([choice,handler])=>choice.removeEventListener('click',handler));
     }

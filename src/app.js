@@ -587,13 +587,14 @@ storageManager = initStorageManager({
     try {
       const result = await clearRoomData(scope);
       // 「全部小屋」同时清理新增冥想提醒偏好，并停止其正在运行的计时。
-      if(scope==='all'&&result?.cleared?.includes('gallery')&&result?.cleared?.includes('study')){
-        const [meditationCleared,darkCleared]=await Promise.all([
+      if(scope==='all'&&result?.cleared?.includes('gallery')&&result?.cleared?.includes('study')&&result?.cleared?.includes('bund')){
+        const [meditationCleared,darkCleared,bundCleared]=await Promise.all([
           roomSwitcher.clearMeditationSettings(),
-          roomSwitcher.clearDarkSettings()
+          roomSwitcher.clearDarkSettings(),
+          roomSwitcher.clearBundSettings()
         ]);
-        if(!meditationCleared||!darkCleared)
-          toast('照片与书房已清理，但冥想或黑屋偏好可能未删除，请检查浏览器存储权限。',5500);
+        if(!meditationCleared||!darkCleared||!bundCleared)
+          toast('照片存档已清理，但部分界面偏好未能删除，请检查浏览器存储权限。',5500);
       }
       await cleanupRefresh;
       return result;

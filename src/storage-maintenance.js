@@ -1,10 +1,11 @@
 import { clearGalleryStorage, getMediaStats } from './media-store.js';
 import { clearStudyStorage, getStudyStorageStats } from './storage.js';
+import { bundStats, bundClear } from './bund-store.js';
 
 const ROOM_KEY = 'miniroom-current-room-v1';
 const NOTICE_KEY = 'miniroom-storage-cleanup-v1';
 const CHANNEL_NAME = 'miniroom-storage-cleanup-v1';
-const scopes = new Set(['gallery', 'study']);
+const scopes = new Set(['gallery', 'study', 'bund']);
 const subscribers = new Set();
 const seen = new Set();
 let channel;
@@ -75,24 +76,34 @@ export async function getStorageOverview() {
   const results = await Promise.allSettled([
     getMediaStats({ includeOriginEstimate: false }),
     getStudyStorageStats(),
+    bundStats(),
   ]);
   const gallery = { count: 0, images: 0, videos: 0, bytes: 0 };
   const study = { bytes: 0, hasPhoto: false, hasNotes: false, hasSettings: false };
+  const bund = { bytes: 0, count: 0 };
   if (results[0].status === 'fulfilled') {
     const value = results[0].value;
     Object.assign(gallery, { count: value.count, images: value.images, videos: value.videos, bytes: value.bytes });
   } else gallery.error = results[0].reason?.message || '照片墙存储暂时无法读取。';
   if (results[1].status === 'fulfilled') Object.assign(study, results[1].value);
   else study.error = results[1].reason?.message || '书房存储暂时无法读取。';
-  return { gallery, study, totalBytes: gallery.bytes + study.bytes };
+  if (results[2].status === 'fulfilled') Object.assign(bund, results[2].value);
+  else bund.error = results[2].reason?.message || '外滩照片墙存储暂时无法读取。';
+  return { gallery, study, bund, totalBytes: gallery.bytes + study.bytes + bund.bytes };
 }
 
-/** 仅操作 miniroom 的两个数据库和限定键，绝不清空整个 origin。 */
+/** 仅操作 miniroom 的指定数据库和限定键，绝不清空整个 origin。 */
 export async function clearRoomData(scope) {
-  if (!['gallery', 'study', 'all'].includes(scope)) throw new Error('请选择清理照片墙、书房，或全部小屋数据。');
+  if (!['gallery', 'study', 'bund', 'all'].includes(scope)) throw new Error('请选择清理照片墙、书房、外滩照片或全部小屋数据。');
   const operation = async () => {
-    const targets = scope === 'all' ? ['gallery', 'study'] : [scope];
-    const results = await Promise.allSettled(targets.map(target => target === 'gallery' ? clearGalleryStorage() : clearStudyStorage()));
+    const targets = scope === 'all' ? ['gallery', 'study', 'bund'] : [scope];
+    const results = await Promise.allSettled(targets.map(async target => {
+      if (target === 'gallery') return clearGalleryStorage();
+      if (target === 'study') return clearStudyStorage();
+      const stats = await bundStats();
+      await bundClear();
+      return { bytes: stats.bytes };
+    }));
     const cleared = [], failed = [], changed = [];
     let bytes = 0;
     results.forEach((result, index) => {

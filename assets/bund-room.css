@@ -1,0 +1,193 @@
+/* 上海外滩 · 家庭照片墙。CSS 景深及柔和色彩，不创建 WebGL 场景。 */
+body[data-room="bund"]{--paper:#101c28;--ink:#faf6ec;background:#121b29;color:#f8f1e4}
+body[data-room="bund"] .topbar{
+  max-width:none;height:71px;margin:0;padding:0 clamp(15px,3vw,42px);
+  background:#151e2aed;border-bottom:1px solid #b0abb032;color:#f9f4ea
+}
+body[data-room="bund"] .topbar .brand strong,
+body[data-room="bund"] .topbar .brand-mark{color:#fff5dd}
+body[data-room="bund"] .topbar .room-switch-button{color:#f6eee1;background:#ffffff13;border-color:#ffffff37}
+body[data-room="bund"] .topbar .room-switch-button small{color:#d2c9b8}
+body[data-room="bund"] .footer{display:none!important}
+.bund-room{min-height:calc(100svh - 71px);color:#fff8eb;isolation:isolate}
+.bund-room[hidden]{display:none!important}
+.bund-scene{
+  position:relative;min-height:max(760px,calc(100svh - 71px));
+  overflow:hidden;display:flex;flex-direction:column;background:#20384f;isolation:isolate;
+  --bund-shift-x:0px;--bund-shift-y:0px
+}
+.bund-scenery{position:absolute;inset:-18px;z-index:-1;pointer-events:none;overflow:hidden}
+.bund-background{
+  position:absolute;inset:-3%;background-color:#34445a;
+  background-image:linear-gradient(180deg,#111c2b22,#141c3590),url('./bund-background.jpg'),url('./bund-skyline.svg');
+  background-position:center center,center 51%,center center;
+  background-size:cover,cover,cover;background-repeat:no-repeat;
+  transform:translate3d(var(--bund-shift-x),var(--bund-shift-y),0) scale(1.065);
+  will-change:transform,filter;
+  filter:brightness(.91) saturate(1.02);
+  transition:filter 2.8s ease,transform .55s cubic-bezier(.15,.63,.4,1)
+}
+.bund-scene[data-scene="day"] .bund-background{filter:brightness(1.23) saturate(.74) sepia(.10)}
+.bund-scene[data-scene="dusk"] .bund-background{filter:brightness(.92) saturate(1.07)}
+.bund-scene[data-scene="night"] .bund-background{filter:brightness(.55) saturate(1.24) hue-rotate(6deg)}
+.bund-cloudglow{
+  position:absolute;inset:0;background:
+    radial-gradient(ellipse 58% 42% at 25% 31%,#ffcd8370,transparent 75%),
+    linear-gradient(180deg,#0f183234 0%,transparent 38%,#030a16a0 100%);
+  opacity:.8;transition:opacity 2.8s ease;mix-blend-mode:screen
+}
+.bund-scene[data-scene="day"] .bund-cloudglow{opacity:.37}
+.bund-scene[data-scene="night"] .bund-cloudglow{opacity:.14}
+.bund-reflection{
+  position:absolute;left:-20%;right:-20%;bottom:-10%;height:46%;
+  opacity:.23;pointer-events:none;
+  background:repeating-linear-gradient(176deg,transparent 0,transparent 23px,#dfb48835 24px,#e5b87828 26px,transparent 29px,transparent 51px);
+  transform:translateY(0);animation:bund-reflect 19s ease-in-out infinite alternate;
+  mask-image:linear-gradient(180deg,transparent,#000 30%,#000 80%,transparent)
+}
+.bund-vignette{position:absolute;inset:0;background:
+  linear-gradient(180deg,#080e21ad 0%,#12224018 27%,#030a1875 74%,#050b1cde 100%),
+  radial-gradient(ellipse at 50% 46%,transparent 35%,#080e1965 100%)}
+.bund-scene[data-motion="false"] .bund-reflection{animation:none}
+.bund-scene[data-motion="false"] .bund-background{transform:none;transition:filter 2.8s ease}
+@keyframes bund-reflect{to{transform:translateY(-26px) translateX(17px)}}
+.bund-heading{position:relative;z-index:3;display:flex;justify-content:space-between;
+  align-items:flex-start;gap:18px;padding:clamp(26px,3.6vw,48px) clamp(16px,4.5vw,64px) 12px}
+.bund-intro{max-width:590px}
+.bund-kicker{font:600 10px/1.6 system-ui,sans-serif;letter-spacing:3.6px;color:#f4d7ac;text-shadow:0 2px 8px #141928aa}
+.bund-intro h1{font:normal clamp(33px,4.4vw,62px)/1.35 "Songti SC","STSong","SimSun",serif;
+  letter-spacing:2px;margin:12px 0 8px;color:#fff8ec;text-shadow:0 4px 28px #070d1cc9}
+.bund-intro h1 span{font-size:.6em;color:#e8c79c}
+.bund-intro p{font-size:12px;color:#f6e5d4ce;letter-spacing:1px;line-height:1.7;text-shadow:0 2px 12px #0008}
+.bund-top-tools{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:10px;padding-top:6px}
+.bund-year-selector{display:flex;align-items:center;gap:7px;padding:7px 9px;
+  border:1px solid #ffffff45;border-radius:11px;background:#132c3a91;
+  font-size:11px;color:#f7edd9;backdrop-filter:blur(12px)}
+.bund-year-selector select{padding:6px;border:0;background:transparent;color:#fff5e6;min-width:87px}
+.bund-year-selector select option{color:#172533;background:white}
+.bund-add{white-space:nowrap;min-height:43px;padding:11px 17px;border-radius:10px;
+  font-size:12px;font-weight:600;color:#332b26;background:#f3dec3;
+  box-shadow:0 6px 22px #0b122954}
+.bund-add:hover:not(:disabled){background:#fff0db}
+.bund-add:disabled{opacity:.5;cursor:not-allowed}
+.bund-stage{position:relative;flex:1;min-height:460px;display:grid;place-items:center;
+  padding:4px 20px 12px;perspective:1400px;z-index:2}
+.bund-wall{
+  display:grid;grid-template-columns:repeat(var(--bund-columns,1),var(--bund-tile,250px));
+  grid-auto-flow:row;gap:var(--bund-gap,14px);width:max-content;max-width:100%;
+  place-content:center;justify-items:center;align-items:center;
+  padding:12px;border-radius:13px;
+  transform:rotateX(1.2deg) translateZ(35px);transform-style:preserve-3d;
+  transition:transform .7s ease
+}
+.bund-wall[data-count="0"]{display:none}
+.bund-card{
+  display:flex;flex-direction:column;align-items:stretch;min-width:0;
+  width:var(--bund-tile,230px);padding:clamp(3px,.55vw,9px);
+  padding-bottom:clamp(4px,.85vw,12px);
+  border:1px solid #fff8e5b8;border-radius:clamp(4px,.6vw,9px);
+  background:linear-gradient(145deg,#fffdf6,#e9dfd0);
+  color:#4f463e;text-align:center;outline-offset:4px;
+  box-shadow:0 3px 7px #06080d70,0 11px 26px #0a111e8c,0 25px 45px #050b1466;
+  transform:translateZ(0) rotateY(0deg) scale(1);
+  transition:transform .7s cubic-bezier(.18,.65,.25,1),box-shadow .7s;
+  position:relative;z-index:0;cursor:pointer;
+}
+.bund-card:hover,.bund-card:focus-visible,.bund-card[data-spotlight="true"]{
+  z-index:2;transform:translateY(-6px) translateZ(20px) rotateY(-1deg) scale(1.065);
+  box-shadow:0 5px 10px #06080d70,0 22px 42px #0a111eb8,0 40px 55px #050b1480
+}
+.bund-card-frame{display:block;aspect-ratio:3/4;overflow:hidden;width:100%;
+  border-radius:2px;background:#c5b9aa;flex:none}
+.bund-card-photo{display:block;width:100%;height:100%;object-fit:cover;
+  object-position:center;transition:transform 1.4s ease}
+.bund-card:hover .bund-card-photo,.bund-card[data-spotlight="true"] .bund-card-photo{transform:scale(1.055)}
+.bund-card-year{display:block;margin-top:clamp(2px,.45vw,8px);
+  font:600 clamp(8px,.85vw,12px)/1.25 ui-monospace,Georgia,serif;letter-spacing:.7px;white-space:nowrap}
+.bund-stage[data-layout="dense"] .bund-card{padding:2px;border-radius:3px}
+.bund-stage[data-layout="dense"] .bund-card-year{font-size:8px;margin-top:2px;letter-spacing:0}
+.bund-stage[data-layout="dense"] .bund-card:hover,.bund-stage[data-layout="dense"] .bund-card[data-spotlight="true"]{transform:translateY(-3px) scale(1.12)}
+.bund-stage[data-layout="hero"] .bund-card{transform:rotate(-1deg) translateZ(12px)}
+.bund-stage[data-layout="hero"] .bund-card:hover{transform:translateY(-8px) rotate(0) scale(1.03)}
+.bund-empty{position:relative;text-align:center;padding:28px 20px 36px;border-radius:21px;
+  background:#15263a90;border:1px solid #ffffff35;backdrop-filter:blur(12px);
+  box-shadow:0 18px 72px #0004;color:#fff3e6;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.bund-empty[hidden]{display:none!important}
+.bund-empty-symbol{font-size:42px;color:#f8d7a0;line-height:1}
+.bund-empty strong{font:normal 21px/1.6 "Songti SC",serif}
+.bund-empty p{font-size:12px;line-height:1.95;color:#f6e9dab8}
+.bund-empty button{background:#eddbbe;color:#3e3529;padding:11px 16px;border-radius:10px;font-size:12px}
+.bund-bottom{position:relative;z-index:3;display:flex;flex-direction:column;
+  padding:15px clamp(17px,4.5vw,64px) 22px;gap:12px;background:linear-gradient(transparent,#07101bc9)}
+.bund-progress{display:flex;align-items:baseline;gap:12px}
+.bund-count{font:normal 19px/1.4 Georgia,serif;color:#f6dba9;letter-spacing:1px}
+.bund-years{font-size:11px;letter-spacing:1px;color:#f8e8d5b8}
+.bund-controls{display:flex;flex-wrap:wrap;align-items:center;gap:15px}
+.bund-scene-modes{display:flex;gap:3px;padding:4px;background:#18293a9d;border:1px solid #ffffff28;border-radius:11px;backdrop-filter:blur(10px)}
+.bund-scene-modes button{color:#ddded9;font-size:11px;min-height:34px;min-width:56px;border-radius:8px;padding:7px 9px}
+.bund-scene-modes button[aria-pressed="true"]{background:#f5debd;color:#40382e;font-weight:600}
+.bund-check{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:#f1e8d2cb;cursor:pointer;white-space:nowrap}
+.bund-check input{width:15px;height:15px;accent-color:#d8ae79}
+.bund-privacy{font-size:10px;line-height:1.7;color:#e4d8ca9a}
+.bund-privacy button{margin-left:10px;color:#f0d3aa;text-decoration:underline;text-underline-offset:3px}
+.bund-credit{font-size:9px;color:#c7c2c0a0}
+.bund-credit a{color:inherit;text-underline-offset:2px}
+.bund-import-status{position:absolute;z-index:10;top:110px;right:16px;
+  max-width:min(85%,430px);border:1px solid #dbbb9170;background:#142434ef;
+  color:#fff4dd;padding:13px 15px;border-radius:12px;font-size:12px;line-height:1.6;
+  box-shadow:0 12px 32px #0004}
+.bund-import-status[hidden]{display:none!important}
+.bund-viewer{border:0;border-radius:18px;padding:0;max-width:min(860px,calc(100vw - 22px));
+  width:860px;color:#293a38;background:#f8f2e8;box-shadow:0 30px 100px #020811cc;overflow:visible}
+.bund-viewer::backdrop{background:#020b18db;backdrop-filter:blur(13px)}
+.bund-viewer-inner{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);
+  min-height:420px;position:relative;overflow:hidden;border-radius:18px}
+.bund-close-viewer{position:absolute;z-index:4;right:12px;top:10px;width:36px;height:36px;display:grid;place-items:center;
+  background:#ffffffbc;border-radius:50%;font-size:25px;color:#536354}
+.bund-viewer-art{display:grid;place-items:center;background:#263949;min-height:430px;padding:16px;overflow:hidden}
+.bund-viewer-art img{display:block;max-width:100%;max-height:73vh;object-fit:contain;box-shadow:0 13px 35px #0208106e;border-radius:4px}
+.bund-viewer-info{padding:48px 28px 25px;display:flex;flex-direction:column;gap:14px}
+.bund-viewer-kicker{letter-spacing:2px;font-size:10px;color:#9a8d79}
+.bund-viewer-year{font:normal 50px/1.2 Georgia,serif;color:#4b6054}
+.bund-viewer-name{font-size:11px;color:#8a928b;overflow-wrap:anywhere}
+.bund-viewer-info label{font-size:12px;color:#617363;margin-top:8px}
+.bund-viewer-info select{min-height:40px;border:1px solid #d8ddd1;background:white;color:#4b5f50;padding:8px 11px;border-radius:10px}
+.bund-viewer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.bund-viewer-actions button{padding:9px 12px;border-radius:8px;border:1px solid #d3d9cb;background:#fff;color:#536650;font-size:11px}
+.bund-viewer-actions button:first-child{background:#607c68;color:#fff;border-color:#607c68}
+.bund-viewer-actions .bund-delete{border-color:#dbbaac;color:#af6b62}
+.bund-delete-note{font-size:10px;color:#b47266}
+.bund-delete-note[hidden]{display:none!important}
+@media(max-width:780px){
+ body[data-room="bund"] .topbar{height:62px;padding:0 12px}
+ .bund-room{min-height:calc(100svh - 62px)}
+ .bund-scene{min-height:max(700px,calc(100svh - 62px))}
+ .bund-heading{padding:26px 18px 10px;flex-direction:column;gap:15px}
+ .bund-intro h1{font-size:35px;margin:8px 0 5px}
+ .bund-intro p{font-size:11px}
+ .bund-top-tools{justify-content:space-between;width:100%;padding:0}
+ .bund-stage{min-height:380px;padding:7px}
+ .bund-bottom{padding:13px 15px 22px;gap:11px}
+ .bund-controls{gap:9px 13px}
+ .bund-viewer-inner{grid-template-columns:1fr}
+ .bund-viewer-art{min-height:200px;max-height:62svh}
+ .bund-viewer-art img{max-height:58svh}
+ .bund-viewer-info{padding:19px 19px 26px;gap:10px}
+ .bund-viewer-year{font-size:36px}
+ .bund-viewer{max-height:93svh;overflow:auto}
+}
+@media(max-width:400px){
+ .bund-intro h1{font-size:30px}
+ .bund-add{padding:10px 11px}
+ .bund-year-selector{gap:3px}
+ .bund-year-selector select{min-width:77px}
+ .bund-card-year{letter-spacing:0}
+ .bund-controls{gap:8px}
+ .bund-check{font-size:10px}
+ .bund-scene-modes button{min-width:47px}
+}
+@media(prefers-reduced-motion:reduce){
+ .bund-reflection{animation:none}
+ .bund-card,.bund-card-photo,.bund-background,.bund-cloudglow{transition:none}
+ .bund-wall{transform:none}
+}

@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="./assets/home-room.css">
   <link rel="stylesheet" href="./assets/meditation-room.css">
   <link rel="stylesheet" href="./assets/dark-room.css">
+  <link rel="stylesheet" href="./assets/bund-room.css">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body data-mood="day" data-room="study">
@@ -130,6 +131,7 @@
   <main id="homeRoomView" aria-label="我的家" hidden></main>
   <main id="meditationRoomView" aria-label="冥想计时小屋" hidden></main>
   <main id="darkRoomView" aria-label="黑屋" hidden></main>
+  <main id="bundRoomView" aria-label="外滩时光家庭照片墙" hidden></main>
 
   <footer class="footer"><span id="saveStatus"><svg><use href="#i-check"/></svg>小屋的记忆，留在本机</span><span>BUILT FOR A SLOWER MOMENT <i>✦</i></span></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -137,7 +139,7 @@
   <dialog id="roomPickerDialog" class="dialog room-picker" aria-labelledby="roomPickerTitle">
     <div class="dialog-top"><span class="dialog-kicker">A DIFFERENT LITTLE WORLD</span><button class="icon-button" data-close aria-label="关闭小屋选择"><svg><use href="#i-close"/></svg></button></div>
     <h2 id="roomPickerTitle">今天，想待在哪一间？</h2>
-    <p class="dialog-intro">五间小屋各有自己的空间：书房、照片、我的家、冥想计时与黑屋。</p>
+    <p class="dialog-intro">六间小屋：书房、照片、我的家、冥想计时、黑屋，还有记录一家人每年的「外滩时光」。</p>
     <div class="room-choices">
       <button class="room-choice" data-room-choice="home" aria-pressed="false">
         <span class="room-choice-art home-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160">
@@ -186,8 +188,24 @@
         <span class="room-choice-copy"><strong>黑屋</strong><small>纯黑，或极弱微光循环往复。</small></span>
         <span class="room-choice-status">进入小屋</span>
       </button>
+      <button class="room-choice" data-room-choice="bund" aria-pressed="false">
+        <span class="room-choice-art bund-choice-art" aria-hidden="true"><svg viewBox="0 0 240 160">
+          <defs><linearGradient id="bund-choice-sky" x2="0.1" y2="1"><stop stop-color="#203a64"/><stop offset="1" stop-color="#eaa177"/></linearGradient></defs>
+          <rect width="240" height="160" fill="url(#bund-choice-sky)"/>
+          <path d="M0 104h240v56H0Z" fill="#3a5777"/>
+          <g fill="#34495e"><path d="M0 101V60h14v41h12V45h20v56h9V57h15v44h13V34h22v67h15V67h15v34h12V53h16v48h19V38h15v63h16V56h16v45h11V67h30v34Z"/></g>
+          <g fill="#f2cb8e" opacity=".9"><rect x="5" y="79" width="46" height="3"/><rect x="75" y="83" width="35" height="3"/><rect x="151" y="81" width="54" height="3"/></g>
+          <path d="M118 103V31" stroke="#d8adbc" stroke-width="3"/>
+          <circle cx="118" cy="49" r="11" fill="#e8a1a9"/><circle cx="118" cy="81" r="8" fill="#e8a1a9"/>
+          <path d="M101 101 118 82 134 101" fill="none" stroke="#e9b19f" stroke-width="3"/>
+          <g transform="translate(19 28) rotate(-6 27 42)"><rect width="48" height="72" rx="3" fill="#f3eee1"/><rect x="5" y="5" width="38" height="52" fill="#c7b6a1"/><path d="M5 44 18 27 30 44 38 36 43 43v14H5Z" fill="#8da29b"/><text x="24" y="67" font-size="8" fill="#7b604b" text-anchor="middle">2019</text></g>
+          <g transform="translate(173 18) rotate(8 25 42)"><rect width="48" height="73" rx="3" fill="#f4eee4"/><rect x="5" y="5" width="38" height="52" fill="#c2cdd2"/><path d="M5 51 20 30 31 43 43 33v24H5Z" fill="#93aba1"/><text x="24" y="68" font-size="8" fill="#7b604b" text-anchor="middle">2026</text></g>
+        </svg></span>
+        <span class="room-choice-copy"><strong>外滩时光</strong><small>一年一张合影，珍藏一家人的成长。</small></span>
+        <span class="room-choice-status">进入小屋</span>
+      </button>
     </div>
-    <p class="fine-print">五间小屋互不影响；进入黑屋后可点击屏幕唤出控件，随时退出。</p>
+    <p class="fine-print">六间小屋互不影响。外滩合影保存在本机独立照片库；书房仍然是默认首页。</p>
   </dialog>
 
   <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">

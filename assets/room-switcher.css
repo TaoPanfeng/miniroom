@@ -40,3 +40,15 @@ body[data-room=gallery]{--paper:#f6f3eb;--surface:#fffdf6;--ink:#3e4939;--muted:
 .dark-choice-art{background:#000}
 .dark-choice-art svg{height:115px}
 @media(max-width:700px){.dark-choice-art svg{height:100px}}
+
+
+/* 六间入口：桌面双列、手机单列，弹窗可滚动不遮挡退出。 */
+.room-picker{max-height:min(88svh,920px);overflow:auto}
+.room-choices{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bund-choice-art{background:#526481}
+.bund-choice-art svg{height:115px}
+@media(max-width:700px){
+ .room-picker{max-height:90svh}
+ .room-choices{grid-template-columns:1fr}
+ .bund-choice-art svg{height:100px!important}
+}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright-core';
 
@@ -35,7 +36,7 @@ try {
   async function enter(name){
     await page.locator('#roomSwitcherBtn').click();
     await picker.locator('[data-room-choice="'+name+'"]').click();
-    await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':name==='gallery'?'galleryRoomView':name==='meditation'?'meditationRoomView':'darkRoomView')).waitFor({state:'visible',timeout:18000});
+    await page.locator('#'+(name==='home'?'homeRoomView':name==='study'?'studyRoomView':name==='gallery'?'galleryRoomView':name==='meditation'?'meditationRoomView':name==='dark'?'darkRoomView':'bundRoomView')).waitFor({state:'visible',timeout:18000});
   }
   await page.goto(host,{waitUntil:'domcontentloaded'});
   await page.locator('#loadingIndicator').waitFor({state:'hidden',timeout:20000});
@@ -45,7 +46,7 @@ try {
   assert.equal(await page.locator('#galleryRoomView').isVisible(),false);
   assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
   assert.ok((await page.locator('#photoPreview').getAttribute('src'))?.endsWith('/assets/default-photo.webp'), 'Study default frame should use the bundled Doraemon image');
-  assert.equal(await page.locator('[data-room-choice]').count(),5);
+  assert.equal(await page.locator('[data-room-choice]').count(),6);
   passed('original study with Doraemon frame is the default');
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
@@ -238,6 +239,64 @@ try {
   assert.equal(await page.locator('#roomSwitcherBtn').getAttribute('aria-label'),'切换小屋，当前在书房');
   passed('fifth dark room: black is mathematically #000, subtle looping fade, controls auto-hide, reveal, Escape, persisted settings and exit');
 
+  // 外滩时光与原照片小屋分别拥有独立数据库，竖照自动缩放成1..10列网格。
+  await enter('bund');
+  await page.locator('.bund-scene').waitFor({state:'visible',timeout:18000});
+  assert.equal(await page.locator('#bundRoomView').isVisible(),true);
+  assert.equal(await page.locator('.bund-card').count(),0);
+  assert.equal(await page.locator('.bund-wall').getAttribute('data-count'),'0');
+  assert.equal(await page.locator('.bund-room canvas').count(),0,'Bund should not load WebGL renderer');
+  const background=await page.locator('.bund-background').evaluate(el=>getComputedStyle(el).backgroundImage);
+  assert.match(background,/bund-skyline\.svg/);
+  const photoBuffer=await readFile(new URL('../assets/default-photo.webp',import.meta.url));
+  const uploadFiles=(count,offset=0)=>Array.from({length:count},(_,i)=>({
+    name:'bund-family-'+(offset+i+1)+'.webp',mimeType:'image/webp',buffer:photoBuffer
+  }));
+  await page.locator('#bundUploadYear').selectOption('2019');
+  await page.locator('#bundFileInput').setInputFiles(uploadFiles(1));
+  await page.waitForFunction(()=>document.querySelectorAll('.bund-card').length===1,null,{timeout:15000});
+  assert.equal(await page.locator('.bund-stage').getAttribute('data-layout'),'hero');
+  assert.equal(await page.locator('.bund-wall').getAttribute('data-columns'),'1');
+  assert.equal(await page.locator('.bund-card-year').first().textContent(),'2019');
+  const photo=page.locator('.bund-card').first();
+  await photo.click();
+  await page.locator('.bund-viewer').waitFor({state:'visible'});
+  assert.equal(await page.locator('.bund-viewer-art img').isVisible(),true);
+  await page.locator('#bundEditYear').selectOption('2020');
+  await page.locator('[data-bund-action="save-year"]').click();
+  await page.waitForFunction(()=>document.querySelector('.bund-card-year')?.textContent==='2020');
+  await page.locator('.bund-close-viewer').click();
+  await page.locator('#bundUploadYear').selectOption('2025');
+  await page.locator('#bundFileInput').setInputFiles(uploadFiles(9,1));
+  await page.waitForFunction(()=>document.querySelectorAll('.bund-card').length===10,null,{timeout:30000});
+  assert.equal(await page.locator('.bund-wall').getAttribute('data-columns'),'4');
+  assert.equal(await page.locator('.bund-wall').getAttribute('data-rows'),'3');
+  await page.locator('[data-bund-scene="night"]').click();
+  assert.equal(await page.locator('.bund-scene').getAttribute('data-scene'),'night');
+  await page.locator('[data-bund-scene="day"]').click();
+  assert.equal(await page.locator('.bund-scene').getAttribute('data-scene'),'day');
+  assert.equal(await page.locator('#bundAutoColor').isChecked(),false,'Manual scene should pause automatic cycling');
+  await page.locator('#bundAutoColor').check();
+  await page.locator('#bundFileInput').setInputFiles(uploadFiles(90,10));
+  await page.waitForFunction(()=>document.querySelectorAll('.bund-card').length===100,null,{timeout:85000});
+  assert.equal(await page.locator('.bund-wall').getAttribute('data-columns'),'10');
+  assert.equal(await page.locator('.bund-wall').getAttribute('data-rows'),'10');
+  assert.equal(await page.locator('.bund-count').textContent(),'100 / 100');
+  assert.ok(await page.locator('[data-bund-action="add"]').isDisabled(),'100-picture ceiling not enforced');
+  const ids=await page.locator('.bund-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.id));
+  assert.equal(new Set(ids).size,100,'Each Bund photo needs its own independent record');
+  await page.locator('.bund-card').first().click();
+  await page.locator('[data-bund-action="remove"]').click();
+  assert.match(await page.locator('[data-bund-action="remove"]').textContent(),/确认删除/);
+  assert.equal(await page.locator('.bund-card').count(),100,'Photo deleted without second confirmation');
+  await page.locator('[data-bund-action="remove"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.bund-card').length===99,null,{timeout:15000});
+  await page.screenshot({path:new URL('bund-99-photos-desktop.png',output).pathname});
+  await enter('study');
+  await enter('bund');
+  assert.equal(await page.locator('.bund-card').count(),99,'Bund photos must survive room switching');
+  passed('Bund photo wall: 1→10→100 layout, 10x10 limit, year editing, 3:4 portraits, scenes, deletion and local persistence');
+
   await enter('gallery');
   await page.locator('.gw-loading').waitFor({state:'hidden',timeout:18000});
   const testImage = new URL('../assets/default-photo.webp',import.meta.url).pathname;
@@ -283,6 +342,8 @@ try {
   assert.equal(await page.locator('#darkSpeed').inputValue(),'fast');
   await page.locator('[data-dark-action="exit"]').click();
   await page.locator('#studyRoomView').waitFor({state:'visible'});
+  await enter('bund');
+  assert.equal(await page.locator('.bund-card').count(),99,'Bund IndexedDB must survive reload');
   await enter('home');
   await page.locator('.home-loading').waitFor({state:'hidden',timeout:20000});
 
@@ -310,6 +371,17 @@ try {
   await page.screenshot({path:new URL('meditation-mobile.png',output).pathname});
   await enter('study');
   passed('meditation timer stays usable in 390px mobile viewport');
+  await enter('bund');
+  const bundMobile=await page.evaluate(()=>({
+    width:document.documentElement.scrollWidth,viewport:innerWidth,
+    count:document.querySelectorAll('.bund-card').length,
+    columns:document.querySelector('.bund-wall')?.dataset.columns
+  }));
+  assert.ok(bundMobile.width<=bundMobile.viewport+4,'Bund mobile horizontal overflow: '+JSON.stringify(bundMobile));
+  assert.equal(bundMobile.count,99);
+  await page.screenshot({path:new URL('bund-mobile-99-photos.png',output).pathname});
+  await enter('study');
+  passed('Bund photo wall with 99 pictures stays inside 390px mobile viewport');
   await enter('dark');
   // 手机面板覆盖屏幕中央；在 x=4 的面板外暗区点击，才是正确的“唤出控件”操作。
   await page.locator('.dark-field').click({position:{x:4,y:200}});
@@ -346,14 +418,29 @@ try {
   await intervalPage.close();
   passed('interval reminders run at elapsed minute boundaries; pausing excludes elapsed time');
 
-  // 「清理全部」同时删除第四间冥想和第五间黑屋偏好，不删除普通原文件。
+  // 「外滩时光」可单独清理，不能影响原照片小屋及书房数据。
+  await enter('bund');
+  await page.locator('#storageManagerBtn').click();
+  await page.locator('[data-sm-scope="bund"]').click();
+  await page.locator('.sm-cancel').click();
+  assert.equal(await page.locator('.bund-card').count(),99,'Canceling Bund cleanup must retain photos');
+  await page.locator('[data-sm-scope="bund"]').click();
+  await page.locator('.sm-accept').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.bund-card').length===0,null,{timeout:25000});
+  await page.locator('.sm-close').click();
+  await enter('study');
+  passed('Bund-specific storage cleanup removes only its own optimized browser photo copies');
+
+  // 「清理全部」同时删除第四间冥想、第五间黑屋和外滩偏好。
   assert.ok(await page.evaluate(()=>!!localStorage.getItem('miniroom-meditation-preferences-v1')));
   assert.ok(await page.evaluate(()=>!!localStorage.getItem('miniroom-dark-room-v1')));
+  assert.ok(await page.evaluate(()=>!!localStorage.getItem('miniroom-bund-preferences-v1')));
   await page.locator('#storageManagerBtn').click();
   await page.locator('[data-sm-scope="all"]').click();
   await page.locator('.sm-accept').click();
   await page.waitForFunction(()=>localStorage.getItem('miniroom-meditation-preferences-v1')===null
-    && localStorage.getItem('miniroom-dark-room-v1')===null,null,{timeout:20000});
+    && localStorage.getItem('miniroom-dark-room-v1')===null
+    && localStorage.getItem('miniroom-bund-preferences-v1')===null,null,{timeout:20000});
   await page.locator('.sm-close').click();
   await enter('meditation');
   assert.equal(await page.locator('[data-med-schedule="interval"]').getAttribute('aria-pressed'),'true');
@@ -367,7 +454,11 @@ try {
   await page.locator('.dark-controls').waitFor({state:'visible'});
   await page.locator('[data-dark-action="exit"]').click();
   await page.locator('#studyRoomView').waitFor({state:'visible'});
-  passed('clear-all wipes meditation and black-room preferences, preserving other rooms');
+  await enter('bund');
+  assert.equal(await page.locator('.bund-card').count(),0);
+  assert.equal(await page.locator('.bund-scene').getAttribute('data-scene'),'dusk');
+  await enter('study');
+  passed('clear-all wipes meditation, black-room and Bund preferences, preserving original study');
 
   // 不支持 WebGL 的设备仍能查看户型，并且「俯视」真的切换投影。
   const fallbackContext=await browser.newContext({viewport:{width:1090,height:740}});
